@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /> 
+		<meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width" />
+		<link rel="stylesheet" type="text/css" href="assets/style.css" />
+		<link rel="stylesheet" type="text/css" href="assets/fonts.css" />
+		<link rel="stylesheet" type="text/css" href="assets/font-awesome/css/font-awesome.min.css" />
+		<title>ArcReactor.JS Example app</title>
+		<script type="text/javascript" src="arc.js"></script>
+	</head>
+	<body>
+		<script>
+			var data = [{id: 666, name: 'Vishva Kumara N P', profession: 'Software Engineer', avatar: 'assets/anarchist-symbol.png',
+						bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.'},
+					{id: 333, name: 'Vasana Pathirana AKA CC', profession: 'Cyber Reconnasance', avatar: 'assets/courtney-chetwynde.jpeg',
+						bio: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.'},
+					{id: 879, name: 'Jane Doe', profession: 'Playing Plain Jane', avatar: 'assets/byffy-the-vampire-slayer.gif',
+						bio: 'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.'}];
+		</script>
+		<div class="frame-container">
+
+
+			<div id="frame-1" class="frame fade">
+				<h1><i class="fa fa-home"></i> Frame 1</h1>
+				<container>
+					<ul class="items">
+						<li data-id="{{id}}">
+							<img class="thumb" src="{{avatar}}" />
+							<h3>{{name}}</h3>
+							<p>{{profession}}</p>
+						</li>
+					</ul>
+				</container>
+				<center class="bottom">
+					<a class="button" href="#frame-2">Go to f2</a>
+					<a class="button" href="#frame-3">Go to f3 <i class="fa fa-arrow-circle-right"></i></a>
+				</center>
+			</div>
+			<script>
+				var schema = arcRead(q('#frame-1 ul.items li')[0]);
+				//
+				new navFrame('frame-1',
+					q('#frame-1')[0],
+					function(context){
+						var ul = context.q('ul.items')[0];
+						ul.innerHTML = '';
+						//new ajax('url', {callback: function(){}});
+						for (var i = 0;i < data.length; i++){
+							var li = arcReact(data[i], schema);
+							li.setAttribute('data-id', i);
+							li.onclick = function(){
+								document.location.hash = 'frame-2/frame-2-1/'+this.getAttribute('data-id');
+							}
+							ul.appendChild(li);
+						}
+					});
+			</script>
+
+
+			<div id="frame-2" class="frame fade slow">
+				<h1>Frame 2</h1>
+				<div class="loading"></div>
+				<a class="button" href="#frame-1">Go to f1</a>
+				<a class="button" href="#frame-2/frame-2-1/1/passed-by/a-url">Go to f2.1</a>
+				<a class="button" href="#frame-3">Go to f3</a>
+				<div id="frame-2-1" class="popup zoom fade">
+					<container>
+						<h1>{{name}}</h1>
+						<img class="thumb" src="{{avatar}}" />
+						<h3>{{profession}}</h3>
+						<p>{{bio}}</p>
+						<center class="bottom">
+							<a class="button" href="javascript:history.back();" x="#frame-1">Exit</a>
+						</center>
+					</container>
+				</div>
+			</div>
+			<script>
+				var schema2 = arcRead(q('#frame-2-1 container')[0]);
+				//
+				new navFrame('frame-2', q('#frame-2')[0]);
+				//
+				new navFrame('frame-2/frame-2-1',
+					q('#frame-2-1')[0],
+					function(context, params){
+						//context.q('.content')[0].innerHTML = params;
+						context.innerHTML = '';
+						if (typeof data[params[0]] == 'undefined')
+							context.innerHTML = 'Not Found';
+						else
+							context.appendChild(arcReact(data[params[0]], schema2));
+					});
+			</script>
+
+
+			<div id="frame-3" class="frame fade slide-left slow">
+				<h1>Frame 3</h1>
+				<container>
+					<form method="post" class="autopilot">
+						<div class="row">
+							<label>Your Email</label>
+							<input type="email" name="email" />
+						</div>
+						<div class="row w-50">
+							<label>Your First Name</label>
+							<input type="text" name="firstname" />
+						</div>
+						<div class="row w-50">
+							<label>Your Last Name</label>
+							<input type="text" name="lastname" />
+						</div>
+					</form>
+				</container>
+				<center class="bottom">
+					<a class="button" href="#frame-1">Go to f1</a>
+					<a class="button" href="#frame-2">Go to f2</a>
+					<a class="button" href="#frame-2/frame-2-1/param2/passed-by/another-url">Go to f2.1</a>
+				</center>
+			</div>
+			<script>
+				new navFrame('frame-3',
+					q('#frame-3')[0],
+					function(context){
+						//alert('This function runs on frame-3 loading');
+					},
+					function(context){
+						//alert('This function runs on frame-3 unloading');
+					});
+			</script>
+
+
+		</div>
+		<script>
+			if (document.location.hash == '')
+				document.location.hash = '#frame-1';
+		</script>
+	</body>
+</html>
