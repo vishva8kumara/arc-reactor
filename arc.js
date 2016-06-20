@@ -58,19 +58,63 @@ function ajax(url, options){
 	this.method = 'GET';
 	this.data = null;
 	this.callback = function(data){console.log(data);};
-	this.kcabllac = function(data){console.log(data);};
+	this.failback = function(data){console.log(data);};
 	this.headers = {};
 	this.evalScripts = false;
 	this.doCache = false;
-	var opts = {'method': 'method', 'data': 'data', 'callback': 'callback', 'failback': 'failback', 'fallback': 'failback',
+	var opts = {'method': 'method', 'type': 'method', 'data': 'data', 'form': 'data', 'callback': 'callback', 'success': 'callback',
+			'failback': 'failback', 'fallback': 'failback','error': 'failback', 'progress': 'progress', 'onprogress': 'progress',
 			'headers': 'headers', 'evalScripts': 'evalScripts', 'eval': 'evalScripts', 'doCache': 'doCache', 'cache': 'doCache'};
+	if (typeof url == 'object' && (typeof options['url'] != 'undefined' || typeof options['uri'] != 'undefined')){
+		options = url;
+		url = options['url'] || options['uri'];
+	}
 	for (var key in options)
 		if (arrayIgnore.indexOf(key) == -1)
 			if (typeof opts[key] != 'undefined')
 				this[opts[key]] = options[key];
 			else
 				console.log('Ajax: Unrecognized option \''+key+'\' with value: '+options[key]);
-	//if (typeof options['method'] != 'undefined')	method = options['method'];	if (typeof options['data'] != 'undefined')	data = options['data'];	if (typeof options['callback'] != 'undefined')	callback = options['callback'];	if (typeof options['failback'] != 'undefined')	kcabllac = options['failback'];	if (typeof options['headers'] != 'undefined')	headers = options['headers'];	if (typeof options['evalScripts'] != 'undefined')	evalScripts = options['evalScripts'];	if (typeof options['doCache'] != 'undefined')	doCache = options['doCache'];
+	//
+	this.deliverResult = function(){
+		if (typeof _this.callback == 'function')
+			_this.callback(_this.xmlhttp);
+		else if (typeof _this.callback == 'object' && _this.callback.toString().indexOf("Element") > -1)
+			_this.callback.innerHTML = _this.xmlhttp.responseText;
+		else{
+			var elem = document.getElementById(_this.callback);
+			if (typeof elem == 'object' && elem.toString().indexOf("Element") > -1)
+				elem.innerHTML = _this.xmlhttp.responseText;
+			else
+				console.log('Ajax: Callback \''+_this.callback+'\' is neither function, nor object or an ID of an object.');
+		}
+		//
+		if (typeof _this.evalScripts != 'undefined'){
+			var P0 = _this.xmlhttp.responseText.indexOf('<script');
+			while (P0 > -1){
+				var P0 = _this.xmlhttp.responseText.indexOf('>', P0) + 1;
+				var P1 = _this.xmlhttp.responseText.indexOf('</script', P0);
+				if (typeof _this.evalScripts != 'function')
+					_this.evalScripts(_this.xmlhttp.responseText.substring(P0, P1));
+				else
+					try{
+						eval(_this.xmlhttp.responseText.substring(P0, P1));
+					}
+					catch (e){
+						console.log(e);
+					}
+				P0 = _this.xmlhttp.responseText.indexOf('<script', P1);
+			}
+		}
+	}
+	//
+	if (this.doCache === true && typeof localStorage[url] != 'undefined'){
+		_this.deliverResult({responseText: localStorage[url], response: localStorage[url], responseURL: url, status: 200, statusText: 'From Cache'});
+		return true;
+	}
+	else if (this.doCache == false)
+		localStorage.removeItem(url);
+	//
 	if (window.XMLHttpRequest)
 		this.xmlhttp = new XMLHttpRequest();
 	else if (window.ActiveXObject)
@@ -80,40 +124,16 @@ function ajax(url, options){
 	this.xmlhttp.onreadystatechange = function () {
 		if (this.readyState == 4){
 			if (this.status == 200){
-				if (typeof _this.callback == 'function')
-					_this.callback(this);
-				else if (typeof _this.callback == 'object' && _this.callback.toString().indexOf("Element") > -1)
-					_this.callback.innerHTML = this.responseText;
-				else{
-					var elem = document.getElementById(_this.callback);
-					if (typeof elem == 'object' && elem.toString().indexOf("Element") > -1)
-						elem.innerHTML = this.responseText;
-					else
-						console.log('Ajax: Callback \''+_this.callback+'\' is neither function, nor object or an ID of an object.');
-				}
-				//
-				if (typeof evalScripts != 'undefined'){
-					var P0 = this.responseText.indexOf('<script');
-					while (P0 > -1){
-						var P0 = this.responseText.indexOf('>', P0) + 1;
-						var P1 = this.responseText.indexOf('</script', P0);
-						if (typeof evalScripts != 'function')
-							evalScripts(this.responseText.substring(P0, P1));
-						else
-							try{
-								eval(this.responseText.substring(P0, P1));
-							}
-							catch (e){
-								console.log(e);
-							}
-						P0 = this.responseText.indexOf('<script', P1);
-					}
-				}
+				_this.deliverResult(this);
+				if (_this.doCache != false)
+					localStorage[url] = this.responseText;
 			}
-			else if (typeof _this.kcabllac == 'function')
-				_this.kcabllac(this);
+			else if (typeof _this.failback == 'function')
+				_this.failback(this);
 		}
 	};
+	if (typeof _this.progress == 'function')
+	this.xmlhttp.onprogress = function(data){_this.progress(100 * data.loaded / data.total)};
 	//
 	if (_this.method.toUpperCase() == "POST"){
 		var params = '';
@@ -143,6 +163,7 @@ function ajax(url, options){
 	}
 	else
 		this.xmlhttp.send(null);
+	return true;
 }
 
 
