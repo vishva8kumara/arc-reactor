@@ -10,16 +10,7 @@
 		<script type="text/javascript" src="arc.js"></script>
 	</head>
 	<body>
-		<script>
-			var data = [{id: 666, name: 'Vishva Kumara N P', profession: 'Software Engineer', avatar: 'assets/anarchist-symbol.png',
-						bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.'},
-					{id: 333, name: 'Vasana Pathirana AKA CC', profession: 'Cyber Reconnasance', avatar: 'assets/courtney-chetwynde.jpeg',
-						bio: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.'},
-					{id: 879, name: 'Jane Doe', profession: 'Playing Plain Jane', avatar: 'assets/byffy-the-vampire-slayer.gif',
-						bio: 'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.'}];
-		</script>
 		<div class="frame-container">
-
 
 			<div id="frame-1" class="frame fade">
 				<h1><i class="fa fa-home"></i> Frame 1</h1>
@@ -30,41 +21,10 @@
 							<h3>{{name}}</h3>
 							<p>{{profession}}</p>
 						</li>
+						<div class="loading"></div>
 					</ul>
 				</container>
-				<center class="bottom">
-					<a class="button" href="#frame-2">Go to f2</a>
-					<a class="button" href="#frame-3">Go to f3 <i class="fa fa-arrow-circle-right"></i></a>
-				</center>
-			</div>
-			<script>
-				var schema = arcRead(q('#frame-1 ul.items li')[0]);
-				//
-				new navFrame('frame-1',
-					q('#frame-1')[0],
-					function(context){
-						var ul = context.q('ul.items')[0];
-						ul.innerHTML = '';
-						//new ajax('url', {callback: function(){}});
-						for (var i = 0;i < data.length; i++){
-							var li = arcReact(data[i], schema);
-							li.setAttribute('data-id', i);
-							li.onclick = function(){
-								document.location.hash = 'frame-2/frame-2-1/'+this.getAttribute('data-id');
-							}
-							ul.appendChild(li);
-						}
-					});
-			</script>
-
-
-			<div id="frame-2" class="frame fade slow">
-				<h1>Frame 2</h1>
-				<div class="loading"></div>
-				<a class="button" href="#frame-1">Go to f1</a>
-				<a class="button" href="#frame-2/frame-2-1/1/passed-by/a-url">Go to f2.1</a>
-				<a class="button" href="#frame-3">Go to f3</a>
-				<div id="frame-2-1" class="popup zoom fade">
+				<div id="frame-1-1" class="popup zoom fade">
 					<container>
 						<h1>{{name}}</h1>
 						<img class="thumb" src="{{avatar}}" />
@@ -75,14 +35,51 @@
 						</center>
 					</container>
 				</div>
+				<center class="bottom">
+					<a class="button" href="#frame-2">Go to f2</a>
+					<a class="button" href="#frame-3">Go to f3 <i class="fa fa-arrow-circle-right"></i></a>
+				</center>
 			</div>
 			<script>
-				var schema2 = arcRead(q('#frame-2-1 container')[0]);
+				//	Read DOM structure and make schema. These are like a class structure to make objects from.
+				var schema = arcRead(q('#frame-1 ul.items li')[0]);
+				var schema2 = arcRead(q('#frame-1-1 container')[0]);
 				//
-				new navFrame('frame-2', q('#frame-2')[0]);
+				//	We will store data in a global variable
+				var data;
 				//
-				new navFrame('frame-2/frame-2-1',
-					q('#frame-2-1')[0],
+				//	Create a navigation point / frame
+				new navFrame('frame-1',
+					//	Dom object
+					q('#frame-1')[0],
+					//	This function is run on entering the frame
+					function(context){
+						var ul = context.q('ul.items')[0];
+						ul.innerHTML = '<div class="loading"></div>';
+						setTimeout(function(){
+							//	After a small time-out, we are querying for data. This is to demonstrate the loading indicator - you may remove the timeout
+							new ajax('assets/data.json',
+								{callback:
+									//	This is the function that runs after data is received
+									function(result){
+										data = eval('('+result.responseText+')');
+										ul.innerHTML = '';
+										for (var i = 0;i < data.length; i++){
+											var li = arcReact(data[i], schema);
+											li.setAttribute('data-id', i);
+											li.onclick = function(){
+												document.location.hash = 'frame-1/frame-1-1/'+this.getAttribute('data-id');
+											}
+											ul.appendChild(li);
+										}
+									}
+								});
+						}, 400);
+					});
+				//
+				//	Another navigation point for the popup
+				new navFrame('frame-1/frame-1-1',
+					q('#frame-1-1')[0],
 					function(context, params){
 						//context.q('.content')[0].innerHTML = params;
 						context.innerHTML = '';
@@ -93,6 +90,16 @@
 					});
 			</script>
 
+			<div id="frame-2" class="frame fade slow">
+				<h1>Frame 2</h1>
+				<div class="loading"></div>
+				<a class="button" href="#frame-1">Go to f1</a>
+				<a class="button" href="#frame-1/frame-1-1/1/passed-by/a-url">Go to f2.1</a>
+				<a class="button" href="#frame-3">Go to f3</a>
+			</div>
+			<script>
+				new navFrame('frame-2', q('#frame-2')[0]);
+			</script>
 
 			<div id="frame-3" class="frame fade slide-left slow">
 				<h1>Frame 3</h1>
@@ -128,7 +135,6 @@
 						//alert('This function runs on frame-3 unloading');
 					});
 			</script>
-
 
 		</div>
 		<script>

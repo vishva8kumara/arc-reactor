@@ -17,6 +17,7 @@ var navigationActiveStack = [];
 
 function navFrame(hash, obj, callback, kcabllac){
 	navigationTable[hash] = [obj, callback, kcabllac];
+	obj.style.display = 'none';
 }
 
 window.onpopstate= function(event){
@@ -30,7 +31,7 @@ window.onpopstate= function(event){
 		var path = hash.slice(0, i+1).join('/');
 		if (typeof navigationTable[path] != 'undefined'){
 			tmpStack.push(navigationTable[path]);
-			if (typeof navigationTable[path][1] == 'function')
+			if (typeof navigationTable[path][1] == 'function' && !existInActiveStack(navigationTable[path][0]))
 				navigationTable[path][1](navigationTable[path][0], hash.slice(i+1));
 		}
 	}
@@ -40,17 +41,40 @@ window.onpopstate= function(event){
 			if (typeof navigationActiveStack[i][2] == 'function')
 				navigationActiveStack[i][2](navigationActiveStack[i][0]);
 			navigationActiveStack[i][0].removeClass('active');
+			new function(obj){
+				setTimeout(function(){obj.style.display = 'none';}, 250);
+			}(navigationActiveStack[i][0]);
 		}
 	//
-	navigationActiveStack = []
+	navigationActiveStack = [];
 	for (var i = 0; i < tmpStack.length; i++){
-		tmpStack[i][0].addClass('active');
+		tmpStack[i][0].style.display = 'block';
+		new function(obj){
+			setTimeout(function(){obj.addClass('active');}, 10);
+		}(tmpStack[i][0]);
 		navigationActiveStack.push(tmpStack[i]);
 	}
 	document.body.scrollLeft = 0;
 	document.body.scrollTop = 0;
 };
+function existInActiveStack(dom){
+	for (var i = 0; i < navigationActiveStack.length; i++)
+		if (navigationActiveStack[i][0] == dom)
+			return true;
+	return false;
+}
 window.addEventListener('load', window.onpopstate);
+window.addEventListener('keyup',
+	function(e){
+		var evt = e || window.event;
+		if (evt.keyCode == 27)
+			history.back();
+	});
+document.addEventListener('backbutton',
+	function(){
+		history.back();
+	}, false);
+//function addClassDelayed(obj, className, delay){}
 
 //	Make Ajax requests
 function ajax(url, options){
@@ -76,34 +100,34 @@ function ajax(url, options){
 			else
 				console.log('Ajax: Unrecognized option \''+key+'\' with value: '+options[key]);
 	//
-	this.deliverResult = function(){
+	this.deliverResult = function(data){
 		if (typeof _this.callback == 'function')
-			_this.callback(_this.xmlhttp);
+			_this.callback(data);
 		else if (typeof _this.callback == 'object' && _this.callback.toString().indexOf("Element") > -1)
-			_this.callback.innerHTML = _this.xmlhttp.responseText;
+			_this.callback.innerHTML = data.responseText;
 		else{
 			var elem = document.getElementById(_this.callback);
 			if (typeof elem == 'object' && elem.toString().indexOf("Element") > -1)
-				elem.innerHTML = _this.xmlhttp.responseText;
+				elem.innerHTML = data.responseText;
 			else
 				console.log('Ajax: Callback \''+_this.callback+'\' is neither function, nor object or an ID of an object.');
 		}
 		//
 		if (typeof _this.evalScripts != 'undefined'){
-			var P0 = _this.xmlhttp.responseText.indexOf('<script');
+			var P0 = data.responseText.indexOf('<script');
 			while (P0 > -1){
-				var P0 = _this.xmlhttp.responseText.indexOf('>', P0) + 1;
-				var P1 = _this.xmlhttp.responseText.indexOf('</script', P0);
+				var P0 = data.responseText.indexOf('>', P0) + 1;
+				var P1 = data.responseText.indexOf('</script', P0);
 				if (typeof _this.evalScripts != 'function')
-					_this.evalScripts(_this.xmlhttp.responseText.substring(P0, P1));
+					_this.evalScripts(data.responseText.substring(P0, P1));
 				else
 					try{
-						eval(_this.xmlhttp.responseText.substring(P0, P1));
+						eval(data.responseText.substring(P0, P1));
 					}
 					catch (e){
 						console.log(e);
 					}
-				P0 = _this.xmlhttp.responseText.indexOf('<script', P1);
+				P0 = data.responseText.indexOf('<script', P1);
 			}
 		}
 	}

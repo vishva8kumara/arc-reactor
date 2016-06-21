@@ -119,9 +119,11 @@ ul.items{
 	list-style-type:none;
 	padding:0px;
 	margin:6px 2px 6px 0px;
-	border-top:1px solid #D9E2F1;
 }
 
+ul.items li:first-child{
+	border-top:1px solid #D9E2F1;
+}
 ul.items li{
 	padding:5px;
 	border-bottom:1px solid #D9E2F1;
