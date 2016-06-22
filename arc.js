@@ -12,7 +12,6 @@
 
 var arrayIgnore = ['min', 'max', 'sum', 'avg'];
 var navigationTable = {};
-var navigationLatch = false;
 var navigationActiveStack = [];
 
 function navFrame(hash, obj, callback, kcabllac){
@@ -21,31 +20,50 @@ function navFrame(hash, obj, callback, kcabllac){
 }
 
 window.onpopstate= function(event){
-	if (navigationLatch){
-		navigationLatch = false;
-		return false;
-	}
+	//	Set classname for the parent of active anchor
+	var anchors = document.querySelectorAll('a[href^=\\#]');
+	for (var i = 0; i < anchors.length; i++)
+		if (document.location.hash.substring(1).startsWith(anchors[i].href.split('#')[1]))
+			anchors[i].parentNode.addClass('active');
+		else
+			anchors[i].parentNode.removeClass('active');
+	//
+	//	Process difference of states
 	var tmpStack = [];
+	var onLoadCallCandidates = [];
 	hash = document.location.hash.replace('#', '').split('/');
 	for (var i = 0; i < hash.length; i++){
 		var path = hash.slice(0, i+1).join('/');
 		if (typeof navigationTable[path] != 'undefined'){
-			tmpStack.push(navigationTable[path]);
-			if (typeof navigationTable[path][1] == 'function' && !existInActiveStack(navigationTable[path][0]))
-				navigationTable[path][1](navigationTable[path][0], hash.slice(i+1));
+			tmpStack.push(navigationTable[path].concat([hash.slice(i+1).join('/')]));
+			//	List candidate onload functions - we are calling only the last
+			if (typeof navigationTable[path][1] == 'function' && !existInActiveStack(navigationTable[path][0], hash.slice(i+1).join('/')))
+				onLoadCallCandidates.push([navigationTable[path], hash.slice(i+1)]);
+				//navigationTable[path][1](navigationTable[path][0], hash.slice(i+1));
 		}
 	}
+	//	Call onload function
+	if (onLoadCallCandidates.length > 0){
+		onLoadCallCandidates = onLoadCallCandidates[onLoadCallCandidates.length - 1];
+		/*if (typeof event == 'undefined')
+			event = {};
+		event.target = event.currentTarget = event.srcElement = onLoadCallCandidates[0][0];*/
+		onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event);
+	}
 	//
+	//	Hide frames to be inactive
 	for (var i = 0; i < navigationActiveStack.length; i++)
-		if (tmpStack.indexOf(navigationActiveStack[i]) == -1){
+		if (!existInStack(tmpStack, navigationActiveStack[i])){
+			//	Call onUnload function
 			if (typeof navigationActiveStack[i][2] == 'function')
-				navigationActiveStack[i][2](navigationActiveStack[i][0]);
+				navigationActiveStack[i][2](navigationActiveStack[i][0], event);
 			navigationActiveStack[i][0].removeClass('active');
 			new function(obj){
 				setTimeout(function(){obj.style.display = 'none';}, 250);
 			}(navigationActiveStack[i][0]);
 		}
 	//
+	//	Show frames to be active
 	navigationActiveStack = [];
 	for (var i = 0; i < tmpStack.length; i++){
 		tmpStack[i][0].style.display = 'block';
@@ -57,13 +75,19 @@ window.onpopstate= function(event){
 	document.body.scrollLeft = 0;
 	document.body.scrollTop = 0;
 };
-function existInActiveStack(dom){
+function existInActiveStack(dom, params){
 	for (var i = 0; i < navigationActiveStack.length; i++)
-		if (navigationActiveStack[i][0] == dom)
+		if (navigationActiveStack[i][0] == dom && navigationActiveStack[i][3] == params)
 			return true;
 	return false;
 }
-window.addEventListener('load', window.onpopstate);
+function existInStack(tmpStack, obj){
+	for (var i = 0; i < tmpStack.length; i++)
+		if (tmpStack[i][0] == obj[0])
+			return true;
+	return false;
+}
+//window.addEventListener('load', window.onpopstate);
 window.addEventListener('keyup',
 	function(e){
 		var evt = e || window.event;
@@ -86,8 +110,11 @@ function ajax(url, options){
 	this.headers = {};
 	this.evalScripts = false;
 	this.doCache = false;
+	this.async = true;
+	this.timeout = -1;
 	var opts = {'method': 'method', 'type': 'method', 'data': 'data', 'form': 'data', 'callback': 'callback', 'success': 'callback',
 			'failback': 'failback', 'fallback': 'failback','error': 'failback', 'progress': 'progress', 'onprogress': 'progress',
+			'async': 'async', 'asynchronous': 'async', 'timeout': 'timeout', 'ontimeout': 'ontimeout',
 			'headers': 'headers', 'evalScripts': 'evalScripts', 'eval': 'evalScripts', 'doCache': 'doCache', 'cache': 'doCache'};
 	if (typeof url == 'object' && (typeof options['url'] != 'undefined' || typeof options['uri'] != 'undefined')){
 		options = url;
@@ -144,8 +171,8 @@ function ajax(url, options){
 	else if (window.ActiveXObject)
 		this.xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
 	//
-	this.xmlhttp.open(_this.method.toUpperCase(), url, true);
-	this.xmlhttp.onreadystatechange = function () {
+	this.xmlhttp.open(_this.method.toUpperCase(), url, _this.async);
+	this.xmlhttp.onreadystatechange = function (){
 		if (this.readyState == 4){
 			if (this.status == 200){
 				_this.deliverResult(this);
@@ -157,7 +184,11 @@ function ajax(url, options){
 		}
 	};
 	if (typeof _this.progress == 'function')
-	this.xmlhttp.onprogress = function(data){_this.progress(100 * data.loaded / data.total)};
+		this.xmlhttp.onprogress = function(data){_this.progress(100 * data.loaded / data.total)};
+	if (typeof _this.ontimeout == 'function' && _this.timeout != -1){
+		this.xmlhttp.ontimeout = _this.ontimeout;
+		this.xmlhttp.timeout = _this.timeout;
+	}
 	//
 	if (_this.method.toUpperCase() == "POST"){
 		var params = '';
@@ -585,17 +616,36 @@ function alphaNumericInputHandler(input){
 }
 
 function currencyInputHandler(input){
-	input.onkeyup = function(){
+	var maxlength = input.getAttribute('maxlength') == undefined ? -1 : input.getAttribute('maxlength')*1;
+	input.onkeydown = function(e){
+		e = e || window.event;
+		var keyCode = e.keyCode || e.which;
+		var charCode = e.charCode || e.keyCode;
+		var shiftCode = e.shiftKey || false;
+		//
+		if (keyCode == 9 || (keyCode > 36 && keyCode < 41))
+			return true;
+                //
+		if ((charCode == 32 || charCode == 8 || charCode == 46 || charCode == 110 || charCode == 188 || charCode == 190))
+			return true;	//	Allow backspace, delete, comma and decimal
+		if (maxlength > -1 && this.value.toString().length >= maxlength)
+			return false;	//	Deny
+		if (((charCode > 47 && charCode < 58) || (charCode > 95 && charCode < 106)) && shiftCode == false)
+			return true;	//	Allow numbers
+		else
+			return false;	//	Deny
+	}
+	/*input.onkeyup = function(){
 		if (isNumeric(this.value.replace(/,/g, '')))
 			this.style.color = '';
 		else
 			this.style.color = 'red';
-	};
+	};*/
 	input.onchange = function(){
-		this.value = this.value.replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-		this.style.color = '';
+		this.value = (1*this.value.replace(/,/g, '')).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+		//this.style.color = '';
 	};
-	input.value = input.value.replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+	input.value = (1*input.value.replace(/,/g, '')).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 	input.onfocus = function(){
 		setTimeout(function(){input.select();}, 10);
 	};
@@ -779,36 +829,38 @@ function maskedInputHandler(input, mask){
 }
 
 var forms = document.querySelectorAll('form.autopilot');
-for (var j = 0; j < forms.length; j++){
-	forms[j].onsubmit = validate;
-	var type;
-	for (var i = 0; i < forms[j].elements.length; i++){
-		type = forms[j].elements[i].getAttribute('data-validate');
-		var mask = forms[j].elements[i].getAttribute('data-mask');
+function autopilotForm(form){
+	//form.onsubmit = validate;
+	var type, mask;
+	for (var i = 0; i < form.elements.length; i++){
+		type = form.elements[i].getAttribute('data-validate');
+		mask = form.elements[i].getAttribute('data-mask');
 		if (type != null){
 			if (type == 'alpha'){
-				new alphaInputHandler(forms[j].elements[i]);
+				new alphaInputHandler(form.elements[i]);
 			}
 			else if (type == 'numeric'){
-				new numericInputHandler(forms[j].elements[i]);
+				new numericInputHandler(form.elements[i]);
 			}
 			else if (type == 'alphanumeric'){
-				new alphaNumericInputHandler(forms[j].elements[i]);
+				new alphaNumericInputHandler(form.elements[i]);
 			}
 			else if (type == 'currency'){
-				new currencyInputHandler(forms[j].elements[i]);
+				new currencyInputHandler(form.elements[i]);
 			}
 			else if (type == 'date'){
-				new dateInputHandler(forms[j].elements[i]);
-			}
-			else if (typeof mask != 'undefined'){
-				new maskedInputHandler(forms[j].elements[i], mask);
+				new dateInputHandler(form.elements[i]);
 			}
 		}
-		if (forms[j].elements[i].tagName == 'TEXTAREA')
-			new textareaHandler(forms[j].elements[i]);
+		else if (mask != null){
+			new maskedInputHandler(form.elements[i], mask);
+		}
+		if (form.elements[i].tagName == 'TEXTAREA')
+			new textareaHandler(form.elements[i]);
 	}
 }
+for (var j = 0; j < forms.length; j++)
+	new autopilotForm(forms[j]);
 
 
 
@@ -863,7 +915,7 @@ function q(selector){
 	return document.querySelectorAll(selector);
 }
 
-function isNumeric(n) {
+var isNumeric = isNumber = function(n) {
 	return !isNaN(parseFloat(n)) && isFinite(n);
 }
 

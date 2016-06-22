@@ -66,9 +66,13 @@ input[type="text"], input[type="password"], input[type="email"], textarea{
 	padding:4px;
 	font-size:11pt;
 	width:100%;
-	background-color:#F8F8F8;
-	border-bottom:2px solid #BCC6D4;
+	background-color:#FAFAFA;
+	border-bottom:2px solid #DDE4EF;
 	box-sizing: border-box;
+}
+
+input[data-validate="numeric"], input[data-validate="currency"]{
+	text-align:right;
 }
 
 .row{
