@@ -114,9 +114,9 @@ function ajax(url, options){
 	this.timeout = -1;
 	var opts = {'method': 'method', 'type': 'method', 'data': 'data', 'form': 'data', 'callback': 'callback', 'success': 'callback',
 			'failback': 'failback', 'fallback': 'failback','error': 'failback', 'progress': 'progress', 'onprogress': 'progress',
-			'async': 'async', 'asynchronous': 'async', 'timeout': 'timeout', 'ontimeout': 'ontimeout',
+			'async': 'async', 'asynchronous': 'async', 'timeout': 'timeout', 'ontimeout': 'ontimeout', 'url': 'url', 'uri': 'url',
 			'headers': 'headers', 'evalScripts': 'evalScripts', 'eval': 'evalScripts', 'doCache': 'doCache', 'cache': 'doCache'};
-	if (typeof url == 'object' && (typeof options['url'] != 'undefined' || typeof options['uri'] != 'undefined')){
+	if (typeof url == 'object' && (typeof url['url'] != 'undefined' || typeof url['uri'] != 'undefined')){
 		options = url;
 		url = options['url'] || options['uri'];
 	}
@@ -214,11 +214,20 @@ function ajax(url, options){
 		if (typeof _this.headers != 'undefined')
 			for (var key in _this.headers)
 				this.xmlhttp.setRequestHeader(key, _this.headers[key]);
+		if (csrftoken != false)
+			this.xmlhttp.setRequestHeader("X-CSRFToken", csrftoken);
 		this.xmlhttp.send(params);
 	}
 	else
 		this.xmlhttp.send(null);
 	return true;
+}
+var cookies = document.cookie.split(';');
+var csrftoken = false;
+for (var i = 0; i < cookies.length; i++){
+	var cookie = cookies[i].trim().split('=');
+	if (cookie[0] == 'csrftoken')
+		csrftoken = cookie[1];
 }
 
 
@@ -881,7 +890,7 @@ Array.prototype.sum = function(){
 
 Array.prototype.avg = function(){
 	for(var total = 0,l=this.length;l--;total+=this[l]);
-	return total / this.length;
+	return this.length == 0 ? '-' : total / this.length;
 }
 
 Float32Array.prototype.max = function() {
@@ -938,6 +947,8 @@ if (!String.prototype.trim){
 
 // ------------------------------------------------------------------------------------
 
-setTimeout(console.log('%c{ArcReactor.js}', 'font-weight:bold; font-size:14pt; color:#204080;'), 10);
-setTimeout(console.log('Loaded and Ready...\n\n'), 10);
-setTimeout(console.log('%cThis is a browser feature intended for developers. Do not paste code you receive from strangers here.', 'color:#F02020;'), 10);
+setTimeout(
+	function(){
+		console.log('%cArcReactor.js', 'font-weight:bold; font-size:14pt; color:#204080;');
+		console.log('%cThis is a browser feature intended for developers. Do not paste code you receive from strangers here.', 'color:#C84040; font-size:11pt;');
+	}, 10);

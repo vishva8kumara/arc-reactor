@@ -161,23 +161,71 @@ ul.items li h2, ul.items li h3{
 }
 .loading{
 	position:absolute;
-	top:45%;
-	left:45%;
-	height:60px;
-	width:60px;
-	border:0.4rem dashed #76E6FF;
-	/*border:0.4rem solid rgb(30, 134, 217);
+	top:50%;
+	left:50%;
+	height:44px;
+	width:44px;
+	border:14px dotted #76E6FF;
+	margin:-22px;
+	/*border:0.4rem dashed #76E6FF;
+	border:0.4rem solid rgb(30, 134, 217);
 	border-top-color:rgb(30, 134, 217);
 	border-left-color:rgba(30, 134, 217, 0.6);
 	border-bottom-color:rgba(30, 134, 217, 0.3);
 	border-right-color:rgba(30, 134, 217, 0.1);*/
+	box-shadow:0px 0px 20px #D7EDFF, inset 0px 0px 10px #CDE1F3;
 	border-radius:50%;
-	-webkit-animation: spin 0.4s infinite linear;
-	-webkit-transform: translate3d(-20px,-20px,0);
+	-webkit-animation: spin 0.6s infinite linear;
+	animation: spin 0.6s infinite linear;
+	/*-webkit-transform: translate3d(-20px,-20px,0);
 	-webkit-transform-origin: center;
-	animation: spin 0.5s infinite linear;
 	transform: translate3d(-20px,-20px,0);
-	transform-origin: center;
+	transform-origin: center;*/
+}
+
+/* ----------------- */
+
+@-webkit-keyframes sk-stretchdelay{
+	0%, 60%, 100%{ -webkit-transform: scaleY(0.5) translate3d(0px,22px,0); }
+	30%{ -webkit-transform: scaleY(0.8) translate3d(0px,3px,0); }
+}
+@keyframes sk-stretchdelay {
+	0%, 60%, 100%{transform: scaleY(0.5) translate3d(0px,22px,0);}
+	30%{transform: scaleY(0.8) translate3d(0px,3px,0);}
+}
+.loading-graph{
+	position: absolute;
+	top:50%;
+	left:50%;
+	/*margin: 100px auto;*/
+	width:50px;
+	height:50px;
+	margin:-12px;
+	text-align: center;
+	border-bottom: 4px solid #74E0EF;
+	/*border-left: 5px solid #74E0EF;*/
+}
+.loading-graph>div{
+	background-color:#76E6FF;
+	background-color:rgba(118, 230, 255, 0.75);
+	height: 100%;
+	width: 6px;
+	margin:3px;
+	display: inline-block;
+	-webkit-animation: sk-stretchdelay 1.2s infinite;
+	animation: sk-stretchdelay 1.2s infinite;
+}
+.loading-graph .rect2 {
+	-webkit-animation-delay: -0.9s;
+	animation-delay: -0.9s;
+}
+.loading-graph .rect3 {
+	-webkit-animation-delay: -0.6s;
+	animation-delay: -0.6s;
+}
+.loading-graph .rect4 {
+	-webkit-animation-delay: -0.3s;
+	animation-delay: -0.3s;
 }
 
 /* --------------------------------------- */
