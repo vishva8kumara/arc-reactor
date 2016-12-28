@@ -60,7 +60,7 @@ button:active, .button:active, input[type="submit"]:active, input[type="button"]
 	background-color:#2B64B7;
 }
 
-input[type="text"], input[type="password"], input[type="email"], textarea{
+input[type="date"], input[type="time"], input[type="text"], input[type="password"], input[type="email"], textarea, select{
 	font-family: 'Roboto', sans-serif;
 	border:0px none;
 	padding:4px;

@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /> 
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 		<meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width" />
+		<script type="text/javascript" src="arc.js"></script>
 		<link rel="stylesheet" type="text/css" href="assets/style.css" />
 		<link rel="stylesheet" type="text/css" href="assets/fonts.css" />
 		<link rel="stylesheet" type="text/css" href="assets/font-awesome/css/font-awesome.min.css" />
 		<title>ArcReactor.JS Example app</title>
-		<script type="text/javascript" src="arc.js"></script>
 	</head>
 	<body>
 		<div class="frame-container">
@@ -39,16 +39,46 @@
 					<a class="button" href="#frame-2">Go to next frame <i class="fa fa-arrow-right"></i></a>
 				</center>
 			</div>
+
 			<script>
 				//	Read DOM structure and make schema. These are like a class structure to make objects from.
-				var schema = arcRead(q('#frame-1 ul.items li')[0]);
-				var schema2 = arcRead(q('#frame-1-1 container')[0]);
+				var schema = arc.read(q('#frame-1 ul.items li')[0]);
+				var schema2 = arc.read(q('#frame-1-1 container')[0]);
 				//
-				//	We will store data in a global variable
-				var data;
+				//*/	Simplified version
 				//
 				//	Create a navigation point / frame
-				new navFrame('frame-1',
+				new arc.nav('frame-1',
+					//	Dom object
+					q('#frame-1')[0],
+					//	This function is run on entering the frame
+					function(context){
+						var ul = context.q('ul.items')[0];
+						ul.HTML('<div class="loading"></div>');
+						//	Load data by Ajax
+						new arc.ajax('assets/data.json', {callback:
+							function(result){
+								//data = eval('('+result.responseText+')');	//	eval is OK when we can trust the parameter
+								ul.HTML('');
+								for (var i = 0;i < result.data.length; i++){
+									//	Template Engine creates DOM objects
+									var li = arc.react(result.data[i], schema);
+									li.setAttribute('data-id', i);
+									//	On click - open a popup with parameters
+									li.onclick = function(){
+										document.location.hash = 'frame-1/frame-1-1/'+this.getAttribute('data-id');
+									}
+									ul.a(li);
+								}
+							}}
+						);
+					});
+				/*/
+				//	We will store data in a global variable
+				var data;		//	A better approach
+				//
+				//	Create a navigation point / frame
+				new arc.nav('frame-1',
 					//	Dom object
 					q('#frame-1')[0],
 					//	This function is run on entering the frame
@@ -62,37 +92,38 @@
 								function(){
 									ul.innerHTML = '';
 									for (var i = 0;i < data.length; i++){
-										var li = arcReact(data[i], schema);
+										var li = arc.react(data[i], schema);
 										li.setAttribute('data-id', i);
 										li.onclick = function(){
 											document.location.hash = 'frame-1/frame-1-1/'+this.getAttribute('data-id');
 										}
-										ul.appendChild(li);
+										ul.a(li);
 									}
 								});
 						}, 300);
 					});
+				//*/
 				//
 				//	Another navigation point for the popup
-				new navFrame('frame-1/frame-1-1',
+				new arc.nav('frame-1/frame-1-1',
 					q('#frame-1-1')[0],
 					function(context, params, event){
 						//console.log(event);
 						//context.q('.content')[0].innerHTML = params;
-						context.innerHTML = '';
+						context.HTML('');
 						loadData(
 							function(){
 								if (typeof data[params[0]] == 'undefined')
-									context.innerHTML = 'Not Found';
+									context.HTML('Not Found');
 								else
-									context.appendChild(arcReact(data[params[0]], schema2));
+									context.a(arc.react(data[params[0]], schema2));
 							});
 					});
 				//
 				function loadData(cont){
-					new ajax('assets/data.json', {callback:
+					new arc.ajax('assets/data.json', {callback:
 						function(result){
-							data = eval('('+result.responseText+')');
+							data = result.data;//eval('('+result.responseText+')');
 							cont();
 						}});
 				}
@@ -110,7 +141,7 @@
 				</center>
 			</div>
 			<script>
-				new navFrame('frame-2', q('#frame-2')[0]);
+				new arc.nav('frame-2', q('#frame-2')[0]);
 			</script>
 
 			<div id="frame-3" class="frame fade slide-left slow">
@@ -162,7 +193,7 @@
 				</center>
 			</div>
 			<script>
-				new navFrame('frame-3',
+				new arc.nav('frame-3',
 					q('#frame-3')[0],
 					function(context){
 						//alert('This function runs on frame-3 loading');
@@ -170,7 +201,7 @@
 					function(context){
 						//alert('This function runs on frame-3 unloading');
 					});
-				new autopilotForm(document.form1);
+				new arc.autopilotForm(document.form1);
 			</script>
 
 		</div>
