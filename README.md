@@ -49,9 +49,11 @@ But the hash pattern for the pop-up should be a path inside the hash for the par
 Let's say you have a frame-1 and frame-2 and a pop-up inside frame-2
 You want to bind #home to frame-1 and #/home/contact-us to pop-up.
 
+```javascript
 arc.nav('home', arc.q('#frame-1')[0]);
 
 arc.nav('home/contact-us', arc.q('#frame-1 #pop-up')[0]);
+```
 
 We will discuss arc.q on a topic below. It is very much like a shorthand for document.querySelectorAll
 
@@ -67,6 +69,7 @@ You can even send the URL as an option and only pass the options variable.
 
 This can be used it like this:
 
+```javascript
 var req = new arc.ajax('data.json', {
 	method: POST,
 	headers: {"authentication": "bearer 9sf7dh596s00s89fd"},
@@ -78,9 +81,12 @@ var req = new arc.ajax('data.json', {
 	progress: function(percentage){
 	}
 });
+```
 
 By keeping a reference to the ajax object you can even abort the request later on:
+```javascript
 req.abort();
+```
 
 callback function is called when the request returns a response with status 200.
 
@@ -106,10 +112,14 @@ This is useful when creating a simple/single DOM object.
 
 Usage:
 
+```javascript
 new arc.elem('li', 'List item content', {class: 'normal-item' 'data-id': '97812'});
+```
 
 This will return a DOM object <LI> with innerHTML "List item content" like this
+```html
 <li class="normal-item" data-id="97812">List item content</li>
+```
 
 This element will not be added into the DOM, and has to be done seperately.
 We will at a later topic look into other useful shorthand functions to append or even prepend a child node to an element.
@@ -133,6 +143,7 @@ This function returns an array of two elements. The first is an arc tree, which 
 and the second, an index.
 
 Let's say you have this on your template:
+```html
 <ul class="items">
 	<li data-id="{{id}}">
 		<img class="thumb" src="{{avatar}}" />
@@ -140,6 +151,7 @@ Let's say you have this on your template:
 		<p>{{profession}}</p>
 	</li>
 </ul>
+```
 
 To create elements into this list with data, first you need to create an arc regent.
 
