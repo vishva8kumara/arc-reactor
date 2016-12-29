@@ -3,6 +3,7 @@
 #### Vishva Kumara N P - vishva8kumara@gmail.com
 
 Distributed Under MIT License
+[![MIT License](https://badges.frapsoft.com/os/mit/mit.svg?v=102)](https://opensource.org/licenses/MIT)
 
 * Font-Awsome and Roboto Font is redistributed with this under their respective licenses, and not covered under this MIT license.
 
@@ -11,8 +12,12 @@ See index.html for demonstration; refer to the embedded JS there.
 ## Introduction
 Arc Reactor JS or Arc JS is a powerful library to make development of Single page applications and Cross platform mobile apps easy.
 This is made in Vanilla JS.
-You can use it for:
- * Making a navigation across DIVisions as screens and popups
+
+Arc Reactor JS is used on Tad Hack 2016 Sri Lanka Winner project Shilpa64 and can be found online at shilpa64.lk
+It is also used in several enterprise SPAs and cross platform mobile apps.
+
+You can use this for:
+ * Making a navigation across DIVisions as screens/frames and popups.
 	* Uses hash URLs, browser back button will take the user to previous screen/state
 	* Attach functions to each navigation point
  * Make Ajax requests with a variety of options and good control, supports caching in localStorage
@@ -21,7 +26,7 @@ You can use it for:
  * Form input handlers: Numeric only, Alpha only, Alpha numeric, Currency, Auto resizing textarea and a masked input
  * Custamizable CSS for a Data List View, Loading indicator, Popup; currently suitable for a Cordova mobile app.
  * DOM abstraction with useful and really shorthand functions for DOM manipulation.
- * Few useful prototype functions for arrays, add/remove classes to DOM, QuerySelector and string manipulation.
+ * Some useful prototype functions for arrays, add/remove classes to DOM, QuerySelector shorthand and string manipulation.
 
 If you are a Vanilla JS enthusiast, this is for you.
 
@@ -70,21 +75,32 @@ This can be used it like this:
 
 ```javascript
 var req = new arc.ajax('data.json', {
-	method: POST,
-	headers: {"authentication": "bearer 9sf7dh596s00s89fd"},
-	data: {"key": "value"},
-	callback: function(result, ref){
-	},
-	fallback: function(result, ref){
-	},
-	progress: function(percentage){
-	}
-});
+		method: POST,
+		headers: {"authentication": "bearer 9sf7dh596s00s89fd"},
+		data: {"key": "value"},
+		callback: function(result, ref){
+			// Use result.data (JSON) on client-side logic or UI
+		},
+		fallback: function(result, ref){
+			// handle error, display error message or retry
+		},
+		progress: function(percentage){
+			// Update a progress bar
+		}
+	});
 ```
 
 By keeping a reference to the ajax object you can even abort the request later on:
 ```javascript
 req.abort();
+```
+This is also useful if the user changes the parameters that cause a fresh ajax request and you want to cancel the previous request.
+
+On Node JS, you can capture this event as follows:
+```javascript
+req.connection.on('close', function(){
+	// connection aborted by client
+});
 ```
 
 callback function is called when the request returns a response with status 200.
