@@ -58,11 +58,36 @@ You want to bind #home to frame-1 and #/home/contact-us to pop-up.
 ```javascript
 arc.nav('home', arc.q('#frame-1')[0]);
 
-arc.nav('home/contact-us', arc.q('#frame-1 #pop-up')[0]);
+arc.nav('home/contact-us', arc.q('#frame-1 #pop-up')[0],
+	function(context, params, event){
+		var form = context.q('form')[0].obj;
+		//	clear the form contents
+		form.reset();
+		form.onsubmit = function(){
+			//	To Do: Send data to server
+			return false;
+		};
+	},
+	function(context, event){
+		alert('Thank you for contacting us.');
+	});
 ```
 
-We will discuss arc.q on a topic below. It is very much like a shorthand for document.querySelectorAll
+We will discuss arc.q on a topic below. It is very much like a shorthand for document.querySelectorAll .
 
+onLoad function receives a couple of parameters. The first; context is the dom element we have bound to the hash pattern on arc.nav() .
+The second is an array of if any back-slash delimited segments on hash after the given pattern.
+The thrid is often forgot, the original event window.onPopState received.
+
+onExit function receives two parameters. The first is the same context as we discussed above.
+
+To pass a parameter from one nav frame to another (while navigating), simply append them back-slash delimited to ```document.hash``` followed by the bound pattern for the destination nav frame.
+You can even set the desired hash on the ```href``` attribute of an anchor.
+
+not-released, future-feature:
+On the next version, you may return an object from onLoad function which will be passed down to onExit function.
+By using this object/proposed-mechanism, you may pass any object or state from onLoad to onExit.
+You may even pass a reference to an object; attributes of which can be changed later, asynchronously, before the onExit event is triggered.
 
 
 ## Calling a server for data (Ajax)
