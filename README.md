@@ -3,6 +3,7 @@
 #### Vishva Kumara N P - vishva8kumara@gmail.com
 
 Distributed Under MIT License
+
 * Font-Awsome and Roboto Font is redistributed with this under their respective licenses, and not covered under this MIT license.
 
 See index.html for demonstration; refer to the embedded JS there.
@@ -11,23 +12,22 @@ See index.html for demonstration; refer to the embedded JS there.
 Arc Reactor JS or Arc JS is a powerful library to make development of Single page applications and Cross platform mobile apps easy.
 This is made in Vanilla JS.
 You can use it for:
-* Making a navigation across DIVisions as screens and popups
+ * Making a navigation across DIVisions as screens and popups
 	* Uses hash URLs, browser back button will take the user to previous screen/state
 	* Attach functions to each navigation point
-* Make Ajax requests with a variety of options and good control, supports caching in localStorage
-* Powerful templating engine that can read DOM object, fill with data from a JSON and generate a DOM tree
-* Tab set, Touch slide and SlideShow handlers
-* Form input handlers: Numeric only, Alpha only, Alpha numeric, Currency, Auto resizing textarea and a masked input
-* Custamizable CSS for a Data List View, Loading indicator, Popup; currently suitable for a Cordova mobile app.
-* DOM abstraction with useful and really shorthand functions for DOM manipulation.
-* Few useful prototype functions for arrays, add/remove classes to DOM, QuerySelector and string manipulation.
+ * Make Ajax requests with a variety of options and good control, supports caching in localStorage
+ * Powerful templating engine that can read DOM object, fill with data from a JSON and generate a DOM tree
+ * Tab set, Touch slide and SlideShow handlers
+ * Form input handlers: Numeric only, Alpha only, Alpha numeric, Currency, Auto resizing textarea and a masked input
+ * Custamizable CSS for a Data List View, Loading indicator, Popup; currently suitable for a Cordova mobile app.
+ * DOM abstraction with useful and really shorthand functions for DOM manipulation.
+ * Few useful prototype functions for arrays, add/remove classes to DOM, QuerySelector and string manipulation.
 
 If you are a Vanilla JS enthusiast, this is for you.
 
 
 
 ## Navigation controller / wrapper-class
-
 
 ### arc.nav(hash, DOMcontext, onLoad, onExit)
 This is to create a navigation frame. This is like having an MVC router on the client side.
@@ -60,7 +60,6 @@ We will discuss arc.q on a topic below. It is very much like a shorthand for doc
 
 
 ## Calling a server for data (Ajax)
-
 
 ### arc.ajax(url, options, ref)
 This sends an Ajax request to a server. Both options and ref are optional. All options are optional, and many options have aliases.
@@ -103,7 +102,6 @@ Arc extension for Express Node JS framework will seamlessly deliver whatever obj
 
 
 ## Templating power tools - reactor core
-
 
 ### arc.elem(tagname, innerHTML, options)
 This is shorthand for document.createElement and then setting innerHTML and setting several attributes to the created element.
@@ -155,7 +153,9 @@ Let's say you have this on your template:
 
 To create elements into this list with data, first you need to create an arc regent.
 
+```javascript
 var regent1 = arc.read(arc.q('.items li')[0]);
+```
 
 You may want to make this regent just once and keep it on global scope,
 because if/once we fill this list with new DOM objects, we will lose this template segment.
@@ -174,7 +174,6 @@ These can be used to create a DOM object by directly entering the intermediate d
 
 
 ## DOM manipulation shorthand functions
-
 
 ### arc.q(selector)
 This is basically a shorthand for document.querySelectorAll .
