@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width" />
+		<script type="text/javascript" src="arc.js"></script>
+		<link rel="stylesheet" type="text/css" href="assets/style.css" />
+		<link rel="stylesheet" type="text/css" href="assets/fonts.css" />
+		<link rel="stylesheet" type="text/css" href="assets/font-awesome/css/font-awesome.min.css" />
+		<title>ArcReactor.JS Example app</title>
+	</head>
+	<body>
+		<div class="frame-container">
+
+			<div id="frame-b" class="frame fade">
+				<h1><i class="fa fa-home"></i> Load JSON Data</h1>
+				<container>
+					<ul class="icon-grid"><!-- Display grid of icons to click/touch -->
+						<li>
+							<a href="{{link}}"><!-- Link to another frame -->
+								<img src="{{image}}" />
+								<span>{{title}}</span>
+							</a>
+						</li>
+					</ul>
+				</container>
+				<center class="bottom">
+					<a class="button" href="lesson-2.html"><i class="fa fa-arrow-left"></i> Go Back</a>
+					<a class="button" href="lesson-4.html">Go to next lesson <i class="fa fa-arrow-right"></i></a>
+				</center>
+			</div>
+
+			<script>
+				//	Read DOM structure and make schema. These are like a class structure to make objects from.
+				//var schema = arc.read('<li data-id="{{id}}"><img class="thumb" src="{{avatar}}" /><h3>{{name}}</h3><p>{{profession}}</p></li>');
+				var schema = arc.read(q('#frame-b ul.icon-grid li')[0]);
+				//
+				//	Create a navigation point / frame
+				new arc.nav('frame-b',
+					//	Dom object
+					q('#frame-b')[0],
+					//	This function is run on entering the frame
+					function(context){
+						var ul = context.q('ul.icon-grid')[0];
+						ul.innerHTML = '';	//	Clear the ul content
+						var data = [{link: '#sub-frame', image: 'assets/img/date_time_preferences.png', title: 'Muhurtha'},
+								{link: '#sub-frame', image: 'assets/img/CrystalBall.png', title: 'My Future'},
+								{link: '#sub-frame', image: 'assets/img/cupid-icon.png', title: 'MatchMaking'},
+								{link: '#sub-frame', image: 'assets/img/user-profile.png', title: 'My Details'},
+								{link: '#sub-frame', image: 'assets/img/date_time_preferences.png', title: 'Muhurtha'},
+								{link: '#sub-frame', image: 'assets/img/date_time_preferences.png', title: 'Muhurtha'},
+								{link: '#sub-frame', image: 'assets/img/date_time_preferences.png', title: 'Muhurtha'}];
+						for (var i = 0; i < data.length; i++){
+							//	Create new DOM object. Mark-up from 'schema' and   from 'data'.
+							var li = arc.react(data[i], schema);
+							//	Append to list
+							ul.a(li);
+							//	EQUAL-TO:	ul.appendChild(li);
+						}
+					});
+			</script>
+
+		</div>
+		<script>
+			if (document.location.hash == '')
+				document.location.hash = '#frame-b';
+			else
+				window.onpopstate();
+		</script>
+	</body>
+</html>

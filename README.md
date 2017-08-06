@@ -39,10 +39,10 @@ If you are a Vanilla JS enthusiast, this is for you.
 This is to create a navigation frame. This is like having an MVC router on the client side.
 
 Here you are creating a navigation point for a given hash pattern.
-Whenever the URL hash (on the address-bar) changes to the match the given hash pattern, arc will display the given DOMcontext,
+Whenever the URL hash (on the address-bar) changes to match the given hash pattern, arc will display the given DOMcontext,
 which is a reference to a DOM element and call the function onLoad with a reference to DOM context and if any extra parameters after the given hash pattern.
 
-You can let the user to navigate to a hash from an anchor or by changing the document.location.hash on JavaScript.
+You can let the user to navigate to a hash from an anchor or by changing the document.location.hash by JavaScript.
 
 When the URL hash changes to match another navigation frame, and the new hash does not match the given pattern, the DOM context will be hidden
 and the onExit function called.

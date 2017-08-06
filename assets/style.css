@@ -143,6 +143,33 @@ ul.items li h2, ul.items li h3{
 
 /* --------------------------------------- */
 
+ul.icon-grid{
+	list-style-type:none;
+	padding:0px;
+	margin:10px 10px;
+}
+
+ul.icon-grid li{
+	width:33.3%;
+	float:left;
+	margin-bottom:20px;
+	text-align:center;
+	padding:10px;
+	box-sizing:border-box;
+}
+
+ul.icon-grid li img{
+	width:80%;
+}
+
+ul.icon-grid li span{
+	display:block;
+	text-align:center;
+	height:40px;
+}
+
+/* --------------------------------------- */
+
 @-webkit-keyframes spin {
 	0%{
 		-webkit-transform: rotate(0deg);

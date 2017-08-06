@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width" />
+		<script type="text/javascript" src="arc.js"></script>
+		<link rel="stylesheet" type="text/css" href="assets/style.css" />
+		<link rel="stylesheet" type="text/css" href="assets/fonts.css" />
+		<link rel="stylesheet" type="text/css" href="assets/font-awesome/css/font-awesome.min.css" />
+		<title>ArcReactor.JS Example app</title>
+	</head>
+	<body>
+		<div class="frame-container">
+
+			<div id="frame-b" class="frame fade">
+				<h1><i class="fa fa-home"></i> List View - Frame</h1>
+				<container>
+					<ul class="items"><!-- Display list of items to click/touch -->
+						<li data-id="{{id}}">
+							<img class="thumb" src="{{avatar}}" />
+							<h3>{{name}}</h3>
+							<p>{{profession}}</p>
+						</li>
+						<div class="loading"></div>
+					</ul>
+				</container>
+				<div id="popup" class="popup zoom fade">
+					<container>
+						<h1>{{name}}</h1>
+						<img class="thumb" src="{{avatar}}" />
+						<h3>{{profession}}</h3>
+						<p>{{bio}}</p>
+						<center class="bottom">
+							<a class="button" href="javascript:history.back();">Exit</a>
+						</center>
+					</container>
+				</div>
+				<center class="bottom">
+					<a class="button" href="lesson-3.html"><i class="fa fa-arrow-left"></i> Go Back</a>
+					<a class="button" href="lesson-5.html">Go to next lesson <i class="fa fa-arrow-right"></i></a>
+				</center>
+			</div>
+
+			<script>
+				//	Read DOM structure and make schema. These are like a class structure to make objects from.
+				//var schema = arc.read('<li data-id="{{id}}"><img class="thumb" src="{{avatar}}" /><h3>{{name}}</h3><p>{{profession}}</p></li>');
+				var schema = arc.read(q('#frame-b ul.items li')[0]);
+				var schemaPopup = arc.read(q('#frame-b #popup container')[0]);
+				//
+				//	Create a navigation point / frame
+				new arc.nav('frame-b',
+					//	Dom object
+					q('#frame-b')[0],
+					//	This function is run on entering the frame
+					function(context){
+						var ul = context.q('ul.items')[0];
+						ul.innerHTML = '<div class="loading"></div>';
+						//	Load data by Ajax
+						new arc.ajax('assets/data.json', {
+							callback: function(result){
+								ul.innerHTML = '';
+								for (var i = 0;i < result.data.length; i++){
+									//	Template Engine creates DOM objects
+									var li = arc.react(result.data[i], schema);
+									li.setAttribute('data-id', i);
+									//	On click - open a popup with parameters
+									li.onclick = function(){
+										document.location.hash = 'frame-b/popup/'+this.getAttribute('data-id');
+									}
+									ul.a(li);
+								}
+							}}
+						);
+					});
+				//
+				//	Create another navigation point / frame
+				new arc.nav('frame-b/popup',
+					//	Create a dummy DOM object
+					q('#frame-b #popup')[0],
+					//	This function is run on entering the frame
+					function(context, params){
+						context.innerHTML = '';
+						loadData(
+							function(){
+								if (typeof data[params[0]] == 'undefined')
+									context.innerHTML = 'Not Found';
+								else
+									context.a(arc.react(data[params[0]], schemaPopup));
+							});
+					});
+				//	Helper Function
+				function loadData(cont){
+					new arc.ajax('assets/data.json', {callback:
+						function(result){
+							data = result.data;//eval('('+result.responseText+')');
+							cont();
+						}});
+				}
+			</script>
+
+		</div>
+		<script>
+			if (document.location.hash == '')
+				document.location.hash = '#frame-b';
+			else
+				window.onpopstate();
+		</script>
+	</body>
+</html>

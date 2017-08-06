@@ -12,8 +12,45 @@
 	<body>
 		<div class="frame-container">
 
+			<div id="frame-0" class="frame fade">
+				<h1><i class="fa fa-home"></i> Frame 0</h1>
+				<container>
+				</container>
+				<center class="bottom">
+					<a class="button" href="#frame-1">Go to next frame <i class="fa fa-arrow-right"></i></a>
+				</center>
+			</div>
+
 			<div id="frame-1" class="frame fade">
 				<h1><i class="fa fa-home"></i> Frame 1</h1>
+				<container>
+					<ul class="items">
+						<li data-id="{{id}}">
+							<img class="thumb" src="{{avatar}}" />
+							<h3>{{name}}</h3>
+							<p>{{profession}}</p>
+						</li>
+						<div class="loading"></div>
+					</ul>
+				</container>
+				<div id="frame-1-1" class="popup zoom fade">
+					<container>
+						<h1>{{name}}</h1>
+						<img class="thumb" src="{{avatar}}" />
+						<h3>{{profession}}</h3>
+						<p>{{bio}}</p>
+						<center class="bottom">
+							<a class="button" href="javascript:history.back();">Exit</a>
+						</center>
+					</container>
+				</div>
+				<center class="bottom">
+					<a class="button" href="#frame-2">Go to next frame <i class="fa fa-arrow-right"></i></a>
+				</center>
+			</div>
+
+			<div id="frame-b" class="frame fade">
+				<h1><i class="fa fa-home"></i> Frame B</h1>
 				<container>
 					<ul class="items">
 						<li data-id="{{id}}">
@@ -61,7 +98,7 @@
 						new arc.ajax('assets/data.json', {callback:
 							function(result){
 								//data = eval('('+result.responseText+')');	//	eval is OK when we can trust the parameter
-								ul.HTML('');
+								ul.innerHTML = '';
 								for (var i = 0;i < result.data.length; i++){
 									//	Template Engine creates DOM objects
 									var li = arc.react(result.data[i], schema);
@@ -112,11 +149,11 @@
 					function(context, params, event){
 						//console.log(event);
 						//context.q('.content')[0].innerHTML = params;
-						context.HTML('');
+						context.innerHTML = '';
 						loadData(
 							function(){
 								if (typeof data[params[0]] == 'undefined')
-									context.HTML('Not Found');
+									context.innerHTML = 'Not Found';
 								else
 									context.a(arc.react(data[params[0]], schema2));
 							});

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width" />
+		<script type="text/javascript" src="arc.js"></script>
+		<link rel="stylesheet" type="text/css" href="assets/style.css" />
+		<link rel="stylesheet" type="text/css" href="assets/fonts.css" />
+		<link rel="stylesheet" type="text/css" href="assets/font-awesome/css/font-awesome.min.css" />
+		<title>ArcReactor.JS Example app</title>
+	</head>
+	<body>
+		<div class="frame-container">
+
+			<div id="frame-b" class="frame fade">
+				<h1><i class="fa fa-home"></i> Grid View</h1>
+				<container>
+					<ul class="icon-grid"><!-- Display grid of icons to click/touch -->
+						<li>
+							<a href="#sub-frame"><!-- Link to another frame -->
+								<img src="assets/img/date_time_preferences.png" />
+								<span>Muhurtha</span>
+							</a>
+						</li>
+						<li>
+							<a href="#sub-frame">
+								<img src="assets/img/CrystalBall.png" />
+								<span>My Future</span>
+							</a>
+						</li>
+						<li>
+							<a href="#sub-frame">
+								<img src="assets/img/cupid-icon.png" />
+								<span>MatchMaking</span>
+							</a>
+						</li>
+						<li>
+							<a href="#sub-frame">
+								<img src="assets/img/user-profile.png" />
+								<span>My Details</span>
+							</a>
+						</li>
+						<li>
+							<a href="#sub-frame">
+								<img src="assets/img/date_time_preferences.png" />
+								<span>Muhurtha</span>
+							</a>
+						</li>
+						<li>
+							<a href="#sub-frame">
+								<img src="assets/img/CrystalBall.png" />
+								<span>My Future</span>
+							</a>
+						</li>
+						<li>
+							<a href="#sub-frame">
+								<img src="assets/img/cupid-icon.png" />
+								<span>MatchMaking</span>
+							</a>
+						</li>
+						<li>
+							<a href="#sub-frame">
+								<img src="assets/img/user-profile.png" />
+								<span>My Details</span>
+							</a>
+						</li>
+					</ul>
+				</container>
+				<center class="bottom">
+					<a class="button" href="lesson-1.html#frame-0"><i class="fa fa-arrow-left"></i> Go Back</a>
+					<a class="button" href="lesson-3.html">Go to next lesson <i class="fa fa-arrow-right"></i></a>
+				</center>
+			</div>
+
+			<div id="sub-frame" class="frame fade">
+				<h1><i class="fa fa-home"></i> Sub Frame</h1><!-- Frame Header -->
+				<container>
+					<!-- Body -->
+					Sub Frame
+				</container>
+				<center class="bottom">
+					<!-- Frame Footer -->
+					<a class="button" href="#frame-b"><i class="fa fa-arrow-left"></i> Go Back</a>
+				</center>
+			</div>
+
+			<script>
+				//	Create a navigation point / frame
+				new arc.nav('frame-b',
+					//	Dom object
+					q('#frame-b')[0],
+					//	This function is run on entering the frame
+					function(context){
+					});
+				//
+				//	Create another navigation point / frame you want to show
+				new arc.nav('sub-frame',
+					//	Dom object
+					q('#sub-frame')[0],
+					//	EQUAL-TO = document.querySelectorAll('#sub-frame')[0]
+					//	EQUAL-TO = document.getElementById('sub-frame')
+					//
+					//	The function that runs on entering the frame (like on-load)
+					function(context){
+						//	alert('Hello');	//	Take actions before frame loads
+					},
+					//
+					//	The function that runs on exiting the frame (like on-unload)
+					function(context){
+						alert('Bye');
+					});
+			</script>
+
+		</div>
+		<script>
+			if (document.location.hash == '')
+				document.location.hash = '#frame-b';
+			else
+				window.onpopstate();
+		</script>
+	</body>
+</html>

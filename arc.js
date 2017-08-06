@@ -12,7 +12,7 @@
 *
 */
 
-var arc = new (function(root){
+var arc = new (function arcReactor(root){
 
 	var arc = this;
 	var arrayIgnore = ['min', 'max', 'sum', 'avg', 'each'];
@@ -24,20 +24,22 @@ var arc = new (function(root){
 
 	var navigationTable = {};
 	var navigationActiveStack = [];
+	var backButtonStack = [];
 
 	//	Create a nav frame
 	this.nav = function(hash, obj, callback, kcabllac){
-		if (! obj instanceof dom)
-			obj = new dom(obj);
+		/*if (!(obj instanceof dom))
+			obj = new dom(obj);*/
 		navigationTable[hash] = [obj, callback, kcabllac];
-		obj.hide();
+		obj.style.display = 'none';
+		//obj.hide();
 	};
 
 	window.onpopstate = function(event){
 		//	Set classname for the parent of active anchor
 		var anchors = root.querySelectorAll('nav a[href^=\\#], ul.tabs a[href^=\\#]');
 		for (var i = 0; i < anchors.length; i++)
-			if (root.location.hash.substring(1).startsWith(anchors[i].href.split('#')[1]))
+			if (document.location.hash.substring(1).startsWith(anchors[i].href.split('#')[1]))
 				anchors[i].parentNode.addClass('active');
 			else
 				anchors[i].parentNode.removeClass('active');
@@ -55,14 +57,19 @@ var arc = new (function(root){
 					onLoadCallCandidates.push([navigationTable[path], hash.slice(i+1)]);
 			}
 		}
-		//	Call onload function
-		if (onLoadCallCandidates.length > 0){
-			onLoadCallCandidates = onLoadCallCandidates[onLoadCallCandidates.length - 1];
-			onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event);
-			var charts = onLoadCallCandidates[0][0].q('.chart');
-			for (var c = 0; c < charts.length; c++)
-				charts[c].innerHTML = loadingIndicator;
-		}
+		//
+		var waitLoading = false;
+		var waitCallback = function(){
+			//	Show frames to be active
+			navigationActiveStack = [];
+			for (var i = 0; i < tmpStack.length; i++){
+				tmpStack[i][0].style.display = 'block';
+				new function(obj){
+					setTimeout(function(){obj.addClass('active');}, 10);
+				}(tmpStack[i][0]);
+				navigationActiveStack.push(tmpStack[i]);
+			}
+		};
 		//
 		//	Hide frames to be inactive
 		for (var i = 0; i < navigationActiveStack.length; i++)
@@ -72,33 +79,53 @@ var arc = new (function(root){
 					navigationActiveStack[i][2](navigationActiveStack[i][0], event);
 				navigationActiveStack[i][0].removeClass('active');
 				new function(obj){
-					setTimeout(function(){obj.hide();}, 250);
+					setTimeout(function(){obj.style.display = 'none';}, 250);
 				}(navigationActiveStack[i][0]);
 			}
 		//
-		//	Show frames to be active
-		navigationActiveStack = [];
-		for (var i = 0; i < tmpStack.length; i++){
-			tmpStack[i][0].show();
-			new function(obj){
-				setTimeout(function(){obj.addClass('active');}, 10);
-			}(tmpStack[i][0]);
-			navigationActiveStack.push(tmpStack[i]);
+		//	Call onload function
+		if (onLoadCallCandidates.length > 0){
+			onLoadCallCandidates = onLoadCallCandidates[onLoadCallCandidates.length - 1];
+			if (onLoadCallCandidates[0][1].length == 4){
+				onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event, waitCallback);
+				waitLoading = true;
+			}
+			else{
+				onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event);
+			}
+			/*var charts = onLoadCallCandidates[0][0].q('.chart');
+			for (var c = 0; c < charts.length; c++)
+				charts[c].innerHTML = loadingIndicator;*/
 		}
+		//
+		//	Display frames right-away
+		if (!waitLoading)
+			waitCallback();
+		//
 		document.body.scrollLeft = 0;
 		document.body.scrollTop = 0;
+		backButtonStack = [];
+		if (navigator.vibrate)
+			navigator.vibrate(25);
 	};
 
 	window.addEventListener('keyup',
 		function(e){
 			var evt = e || window.event;
-			if (evt.keyCode == 27)
-				history.back();
+			if (evt.keyCode == 27){
+				if (backButtonStack.length == 0)
+					history.back();
+				else
+					backButtonStack.pop()();
+			}
 		});
 
 	document.addEventListener('backbutton',
 		function(){
-			history.back();
+			if (backButtonStack.length == 0)
+				history.back();
+			else
+				backButtonStack.pop()();
 		}, false);
 
 	var existInActiveStack = function(dom, params){
@@ -115,11 +142,16 @@ var arc = new (function(root){
 		return false;
 	};
 
+	this.enqBackBtnStack = function(callback){
+		backButtonStack.push(callback);
+	}
+
 
 	// ------------------------------------------------------------------------------------
 	//	Make Ajax requests
 	// ------------------------------------------------------------------------------------
 
+	var ajaxCache = {};
 	this.ajax = function(url, options, ref){
 		//	Ensure this function is always called as a dynamic instance
 		if (this == arc)
@@ -159,10 +191,10 @@ var arc = new (function(root){
 		//	Deliver the result to callback
 		this.deliverResult = function(data){
 			if (typeof _this.callback == 'function'){
-				if (data.getResponseHeader('content-type') == 'application/json')
-					try{
+				try{
+					if (data.getResponseHeader('content-type') == 'application/json')
 						data.data = JSON.parse(data.responseText);
-					}catch(e){}
+				}catch(e){}
 				_this.callback(data, ref);
 			}
 			else if (typeof _this.callback == 'object' && _this.callback.toString().indexOf("Element") > -1)
@@ -198,6 +230,10 @@ var arc = new (function(root){
 			_this.deliverResult({responseText: localStorage[url], response: localStorage[url], responseURL: url, status: 200, statusText: 'From Cache'});
 			return true;
 		}
+		else if (isNumber(this.doCache) && typeof ajaxCache[url] != 'undefined'){
+			_this.deliverResult({responseText: ajaxCache[url], response: ajaxCache[url], responseURL: url, status: 200, statusText: 'From Cache'});
+			return true;
+		}
 		else if (this.doCache == false)
 			localStorage.removeItem(url);
 		//
@@ -211,8 +247,16 @@ var arc = new (function(root){
 			if (this.readyState == 4){
 				if (this.status == 200){
 					_this.deliverResult(this);
-					if (_this.doCache != false)
+					if (_this.doCache === true)
 						localStorage[url] = this.responseText;
+					else if (isNumber(_this.doCache)){
+						ajaxCache[url] = this.responseText;
+						new (function(url){
+							setTimeout(function(){
+								delete ajaxCache[url];
+							}, _this.doCache * 1000);
+						})(url);
+					}
 				}
 				else if (typeof _this.failback == 'function')
 					_this.failback(this, ref);
@@ -224,6 +268,12 @@ var arc = new (function(root){
 			this.xmlhttp.ontimeout = _this.ontimeout;
 			this.xmlhttp.timeout = _this.timeout;
 		}
+		//
+		if (typeof _this.headers != 'undefined')
+			for (var key in _this.headers)
+				this.xmlhttp.setRequestHeader(key, _this.headers[key]);
+		if (csrftoken != false)
+			this.xmlhttp.setRequestHeader("X-CSRFToken", csrftoken);
 		//
 		if (_this.method.toUpperCase() == "POST"){
 			var params = '';
@@ -246,11 +296,6 @@ var arc = new (function(root){
 			else
 				params = _this.data;
 			//
-			if (typeof _this.headers != 'undefined')
-				for (var key in _this.headers)
-					this.xmlhttp.setRequestHeader(key, _this.headers[key]);
-			if (csrftoken != false)
-				this.xmlhttp.setRequestHeader("X-CSRFToken", csrftoken);
 			this.xmlhttp.send(params);
 		}
 		else
@@ -282,6 +327,8 @@ var arc = new (function(root){
 	//	Read DOM tree and generate JSON
 	this.read = function(dom, index){
 		var obj = {};
+		if (typeof dom == 'string')
+			dom = arc.elem('div', dom).childNodes[0];
 		if (typeof index == 'undefined')
 			var index = {};
 		for (var i = 0; i < dom.attributes.length; i++){
@@ -409,6 +456,406 @@ var arc = new (function(root){
 
 
 	// ------------------------------------------------------------------------------------
+	//	FORM CONTROL
+	// ------------------------------------------------------------------------------------
+
+	this.numericInputHandler = function(input){
+		var maxlength = input.getAttribute('maxlength') == undefined ? -1 : input.getAttribute('maxlength')*1;
+		input.onkeydown = function(e){
+			e = e || window.event;
+			var keyCode = e.keyCode || e.which;
+			var charCode = e.charCode || e.keyCode;
+			var shiftCode = e.shiftKey || false;
+			//
+			if (keyCode == 9 || keyCode == 13 || (keyCode > 36 && keyCode < 41))
+				return true;
+			//
+			if ((charCode == 32 || charCode == 8 || charCode == 46))// && shiftCode == false
+				return true;	//	Allow backspace / delete
+			if (maxlength > -1 && this.value.toString().length >= maxlength)
+				return false;	//	Deny
+			if (((charCode > 47 && charCode < 58) || (charCode > 95 && charCode < 106)) && shiftCode == false)
+				return true;	//	Allow numbers
+			else
+				return false;	//	Deny
+		}
+		input.onfocus = function(){
+			setTimeout(function(){input.select();}, 10);
+		};
+		input.onkeyup = input.onchange = function(e){
+			if (maxlength > -1)
+				this.value = this.value.replace(/[^0-9]/g, '').substring(0, maxlength);
+		}
+	};
+
+	this.alphaInputHandler = function(input){
+		input.onkeydown = function(e){0
+			e = e || window.event;
+			var keyCode = e.keyCode || e.which;
+			//
+			if (keyCode == 9 || keyCode == 13 || (keyCode > 36 && keyCode < 41))
+				return true;
+			//
+			e = e || window.event;
+			var charCode = e.charCode || e.keyCode;
+			if (charCode == 32 || charCode == 8 || charCode == 46)
+				return true;	//	Allow backspace / delete / space
+			if (charCode < 65 || charCode > 90)
+				return false;	//	Deny anything not a latin character
+		}
+		input.onchange = function(e){
+			this.value = this.value.replace(/[^A-Z a-z]/g, '');
+		}
+	};
+
+	this.alphaNumericInputHandler = function(input){
+		input.onkeydown = function(e){
+			e = e || window.event;
+			var keyCode = e.keyCode || e.which;
+			var charCode = e.charCode || e.keyCode;
+			var shiftCode = e.shiftKey || false;
+			//
+			if (((charCode > 47 && charCode < 58) || (charCode > 95 && charCode < 106)) && shiftCode == false)
+				return true;	//	Allow numbers
+			//
+			if (keyCode == 9 || keyCode == 13 || (keyCode > 36 && keyCode < 41))
+				return true;
+			//
+			if (charCode == 32 || charCode == 8 || charCode == 46)
+				return true;	//	Allow backspace / delete / space
+			//if (charCode < 65 || charCode > 90)
+			return false;	//	Deny anything not an alphanumeric character
+		}
+		input.onchange = function(e){
+			this.value = this.value.replace(/[^A-Z a-z 0-9]/g, '');
+		}
+	};
+
+	this.currencyInputHandler = function(input){
+		var maxlength = input.getAttribute('maxlength') == undefined ? -1 : input.getAttribute('maxlength')*1;
+		input.onkeydown = function(e){
+			e = e || window.event;
+			var keyCode = e.keyCode || e.which;
+			var charCode = e.charCode || e.keyCode;
+			var shiftCode = e.shiftKey || false;
+			//
+			if (keyCode == 9 || keyCode == 13 || (keyCode > 36 && keyCode < 41))
+				return true;
+			//
+			if ((charCode == 32 || charCode == 8 || charCode == 46 || charCode == 110 || charCode == 188 || charCode == 190))
+				return true;	//	Allow backspace, delete, comma and decimal
+			if (maxlength > -1 && this.value.toString().length >= maxlength)
+				return false;	//	Deny
+			if (((charCode > 47 && charCode < 58) || (charCode > 95 && charCode < 106)) && shiftCode == false)
+				return true;	//	Allow numbers
+			else
+				return false;	//	Deny
+		}
+		/*input.onkeyup = function(){
+			if (isNumeric(this.value.replace(/,/g, '')))
+				this.style.color = '';
+			else
+				this.style.color = 'red';
+		};*/
+		input.onchange = function(){
+			this.value = (1*this.value.replace(/,/g, '')).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+			//this.style.color = '';
+		};
+		input.value = (1*input.value.replace(/,/g, '')).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+		input.onfocus = function(){
+			setTimeout(function(){input.select();}, 10);
+		};
+	};
+
+	this.dateInputHandler = function(input){
+		input.onchange = function(){
+			this.style.color = '';
+		};
+	};
+
+	this.textareaHandler = function(messageText){
+		messageText.style.overflow = 'auto';
+		var messageTextHeight = messageText.scrollHeight;
+		messageText.style.overflow = 'hidden';
+		messageText.style.maxWidth = '100%';
+		messageText.style.width = '100%';
+		messageText.onkeyup = function(event){
+			var bkpOffsetHeight = this.offsetHeight;
+			messageText.style.overflow = 'auto';
+			this.style.height = '33px';
+			if (messageTextHeight != this.scrollHeight){
+				var bkpScrollHeight = this.scrollHeight;
+				this.style.height = messageTextHeight + 'px';
+				this.scrollTop = 0;
+				//
+				setTimeout(
+					function(){
+						this.scrollTop = 0;
+						messageText.style.transition = 'height 0.25s';
+						messageText.style.webkitTransition = 'height 0.25s';
+						messageText.style.mozTransition = 'height 0.25s';
+						messageText.style.height = messageTextHeight + 'px';
+					}, 5);
+				//
+				messageTextHeight = bkpScrollHeight;
+				//
+				setTimeout(
+					function(){
+						messageText.style.transition = '';
+						messageText.style.webkitTransition = '';
+						messageText.style.mozTransition = '';
+					}, 500);
+				//
+				messageText.style.overflow = 'hidden';
+			}
+			else{
+				this.style.height = this.scrollHeight + 'px';
+				messageText.style.overflow = 'hidden';
+			}
+			if (typeof event != 'undefined'){
+				event.stopPropagation();
+				event.preventDefault();
+			}
+		}
+		messageText.onkeyup();
+		messageText.onkeypress = function(){
+			messageText.scrollTop = 0;
+			setTimeout(function(){
+						messageText.scrollTop = 0;
+					}, 1);
+			setTimeout(function(){
+						messageText.scrollTop = 0;
+					}, 5);
+		}
+	};
+
+	this.maskedInputHandler = function(input, mask){
+		this.input_box = input;
+		this.input_mask = mask;
+		var _self = this;
+		//
+		var output = mask.replace(/9/g, '_').replace(/A/g, '_');
+		var originalLength = output.length;
+		//
+		input.onkeydown = function(e){
+			e = e || event;
+			var target = e.target || e.srcElement;
+			if ((e.keyCode > 36 && e.keyCode < 41) || e.keyCode == 9 || e.keyCode == 13)
+				return true;
+			else if (e.keyCode == 46){
+				e.cancelBubble = true;
+				return false;
+			}
+			else if (e.keyCode == 8){
+				var selStart;
+				var totLen = target.value.length;
+				if (document.selection){
+					var oSel = document.selection.createRange();
+					oSel.moveStart ('character', -originalLength);
+					selStart = oSel.text.length;
+				}
+				else
+					selStart = target.selectionStart;
+				//
+				if (selStart == 0)
+					return false;
+				//
+				if (target.value.substring(selStart-1, selStart) != '_' && isNumber(target.value.substring(selStart-1, selStart)))
+					target.value = target.value.substring(0, selStart-1) + '_' + target.value.substring(selStart, totLen);
+				try{
+					target.setSelectionRange(selStart-1, selStart-1);
+				}catch(e){	//	IE 8 support (fir IE testing)
+					var range = target.createTextRange();
+					range.collapse(true);
+					range.moveStart('character', selStart+1);
+					range.moveEnd('character', 0);
+					range.select();
+				}
+				//
+				e.cancelBubble = true;
+				return false;
+			}
+		}
+		//
+		input.onkeypress = function(e){
+			e = e || event;
+			var target = e.target || e.srcElement
+			var ch = String.fromCharCode(e.charCode || e.keyCode);
+			if ((e.keyCode > 36 && e.keyCode < 41) || e.keyCode == 9 || e.keyCode == 13)
+				return true;
+			else if (!isNumber(ch) || ch == '\t'){
+				e.cancelBubble = true;
+				return false;
+			}
+			var output = _self.input_mask.replace(/9/g, '_').replace(/A/g, '_');
+			var totLen = target.value.length;
+			//
+			var selStart;
+			if (document.selection){
+				var oSel = document.selection.createRange();
+				oSel.moveStart ('character', -originalLength);
+				selStart = oSel.text.length;
+			}
+			else
+				selStart = target.selectionStart;
+			//
+			if (totLen == selStart){
+				e.cancelBubble = true;
+				return false;
+			}
+			//
+			while (selStart < totLen && (target.value.substring(selStart, selStart+1) != '_' && !isNumber(target.value.substring(selStart, selStart+1))))
+				selStart += 1;
+			target.value = target.value.substring(0, selStart) + ch + target.value.substring(selStart+1, totLen);
+			try{
+				target.setSelectionRange(selStart+1, selStart+1);
+			}
+			catch(e){	//	IE 8 support (for IE testing)
+				var range = target.createTextRange();
+				range.collapse(true);
+				range.moveStart('character', selStart+1);
+				range.moveEnd('character', 0);
+				range.select();
+			}
+			//
+			e.cancelBubble = true;
+			return false;
+		}
+		//
+		input.onmouseup = input.onfocus = function(e){
+			if (this.value == '')
+				this.value = output;
+			if (this.value == output)	//	Do not put 'else' on this line
+				try{
+					this.setSelectionRange(0, 0);
+				}
+				catch(e){	//	IE 8 support (for IE testing)
+					var range = this.createTextRange();
+					range.collapse(true);
+					range.moveStart('character', 0);
+					range.moveEnd('character', 0);
+					range.select();
+				}
+		}
+		//
+		input.onblur = function(e){
+			if (this.value == output)
+				this.value = '';
+		}
+	};
+
+	var forms = root.querySelectorAll('form.autopilot');
+	this.autopilotForm = function(form){
+		//form.onsubmit = validate;
+		var type, mask;
+		for (var i = 0; i < form.elements.length; i++){
+			type = form.elements[i].getAttribute('data-validate');
+			mask = form.elements[i].getAttribute('data-mask');
+			if (type != null){
+				if (type == 'alpha'){
+					new arc.alphaInputHandler(form.elements[i]);
+				}
+				else if (type == 'numeric'){
+					new arc.numericInputHandler(form.elements[i]);
+				}
+				else if (type == 'alphanumeric'){
+					new arc.alphaNumericInputHandler(form.elements[i]);
+				}
+				else if (type == 'currency'){
+					new arc.currencyInputHandler(form.elements[i]);
+				}
+				else if (type == 'date'){
+					new arc.dateInputHandler(form.elements[i]);
+				}
+			}
+			else if (mask != null){
+				new arc.maskedInputHandler(form.elements[i], mask);
+			}
+			if (form.elements[i].tagName == 'TEXTAREA')
+				new arc.textareaHandler(form.elements[i]);
+		}
+	};
+	for (var j = 0; j < forms.length; j++)
+		new autopilotForm(forms[j]);
+
+
+	// ------------------------------------------------------------------------------------
+	//	DYNAMIC SCRIPT AND TEMPLATE LOADER
+	// ------------------------------------------------------------------------------------
+
+	var loaderTemplates = {}, loaderScripts = {};
+	this.loader = function(script, template){
+		//	Function to-be called on navigating into activity
+		return function(context, params, e, callback){
+			//	Load Script
+			var module = false, tLoaded = false;
+			var exec = function(code){
+				if (typeof code != 'undefined')
+					module = code;
+				if (tLoaded){
+					//	Emulate in a VM
+					try{
+						module = eval('try{'+module+'}catch(e){module.exports = e}');
+						//console.log(module);
+					}
+					catch(e){
+						console.error(e.toString()+'\n\t'+script);//e.name+': '+e.message
+					}
+					//
+					//	Dispatch callbacks - bind template to script
+					if (typeof module == 'function'){
+						if (module.length == 4)
+							module(context, params, e, callback);
+						else{
+							module(context, params, e);
+							callback();
+						}
+					}
+					else{
+						callback();
+						//console.error(module);
+					}
+				}
+			}
+			if (typeof loaderScripts[script] != 'undefined'){
+				exec(loaderScripts[script]);
+			}
+			else
+				new arc.ajax(script, {
+					method: GET, //async: false, cache: 360,
+					callback: function(data){
+						exec(data.responseText);
+						loaderScripts[script] = data.responseText;
+					}
+				});
+			//
+			//	Load Template
+			if (typeof loaderTemplates[template] != 'undefined'){
+				context.innerHTML = loaderTemplates[template];
+				tLoaded = true;
+				exec();
+			}
+			else
+				new arc.ajax(template, {
+					method: GET, //async: false, cache: 360,
+					callback: function(data){
+						/*nav.className = '';
+						setTimeout(function(){
+							nav.style.zIndex = 1;
+						}, 100);*/
+						context.innerHTML = data.responseText;
+						tLoaded = true;
+						exec();
+						loaderTemplates[template] = data.responseText;
+					}
+				});
+			//
+			//loadTemplate(context, 'sign-in', function(){});
+		};
+	};
+
+
+	// ------------------------------------------------------------------------------------
 	//	SLIDE AND TABS
 	// ------------------------------------------------------------------------------------
 
@@ -519,6 +966,11 @@ var arc = new (function(root){
 		}, false);
 	};
 
+
+	// ------------------------------------------------------------------------------------
+	//	TOUCH SLIDER
+	// ------------------------------------------------------------------------------------
+
 	this.touchSlide = function(ele, bg, stepWidth){
 		var _self = this;
 		this.startx = 0;
@@ -566,7 +1018,9 @@ var arc = new (function(root){
 	//	SLIDESHOW
 	// ------------------------------------------------------------------------------------
 
-	this.slideShow = function(ul){
+	this.slideShow = function(ul, period){
+		if (typeof period == 'undefined')
+			period = 3200;
 		var slides = ul.querySelectorAll('li');
 		var i = 0, pi = 0;
 		var _self = this;
@@ -599,403 +1053,12 @@ var arc = new (function(root){
 		var autoTimer = false;
 		var autoSlide = function(){
 			_self.getNext();
-			setTimeout(autoSlide, 3200);
+			setTimeout(autoSlide, period);
 		}
-		setTimeout(autoSlide, 3200);
+		setTimeout(autoSlide, period);
 	};
-
-
-	// ------------------------------------------------------------------------------------
-	//	FORM CONTROL
-	// ------------------------------------------------------------------------------------
-
-	this.numericInputHandler = function(input){
-		var maxlength = input.getAttribute('maxlength') == undefined ? -1 : input.getAttribute('maxlength')*1;
-		input.onkeydown = function(e){
-			e = e || window.event;
-			var keyCode = e.keyCode || e.which;
-			var charCode = e.charCode || e.keyCode;
-			var shiftCode = e.shiftKey || false;
-			//
-			if (keyCode == 9 || (keyCode > 36 && keyCode < 41))
-				return true;
-			//
-			if ((charCode == 32 || charCode == 8 || charCode == 46))// && shiftCode == false
-				return true;	//	Allow backspace / delete
-			if (maxlength > -1 && this.value.toString().length >= maxlength)
-				return false;	//	Deny
-			if (((charCode > 47 && charCode < 58) || (charCode > 95 && charCode < 106)) && shiftCode == false)
-				return true;	//	Allow numbers
-			else
-				return false;	//	Deny
-		}
-		input.onfocus = function(){
-			setTimeout(function(){input.select();}, 10);
-		};
-		input.onkeyup = input.onchange = function(e){
-			if (maxlength > -1)
-				this.value = this.value.replace(/[^0-9]/g, '').substring(0, maxlength);
-		}
-	};
-
-	this.alphaInputHandler = function(input){
-		input.onkeydown = function(e){0
-			e = e || window.event;
-			var keyCode = e.keyCode || e.which;
-			//
-			if (keyCode == 9 || (keyCode > 36 && keyCode < 41))
-				return true;
-			//
-			e = e || window.event;
-			var charCode = e.charCode || e.keyCode;
-			if (charCode == 32 || charCode == 8 || charCode == 46)
-				return true;	//	Allow backspace / delete / space
-			if (charCode < 65 || charCode > 90)
-				return false;	//	Deny anything not a latin character
-		}
-		input.onchange = function(e){
-			this.value = this.value.replace(/[^A-Z a-z]/g, '');
-		}
-	};
-
-	this.alphaNumericInputHandler = function(input){
-		input.onkeydown = function(e){
-			e = e || window.event;
-			var keyCode = e.keyCode || e.which;
-			var charCode = e.charCode || e.keyCode;
-			var shiftCode = e.shiftKey || false;
-			//
-			if (((charCode > 47 && charCode < 58) || (charCode > 95 && charCode < 106)) && shiftCode == false)
-				return true;	//	Allow numbers
-			//
-			if (keyCode == 9 || (keyCode > 36 && keyCode < 41))
-				return true;
-			//
-			if (charCode == 32 || charCode == 8 || charCode == 46)
-				return true;	//	Allow backspace / delete / space
-			//if (charCode < 65 || charCode > 90)
-			return false;	//	Deny anything not an alphanumeric character
-		}
-		input.onchange = function(e){
-			this.value = this.value.replace(/[^A-Z a-z 0-9]/g, '');
-		}
-	};
-
-	this.currencyInputHandler = function(input){
-		var maxlength = input.getAttribute('maxlength') == undefined ? -1 : input.getAttribute('maxlength')*1;
-		input.onkeydown = function(e){
-			e = e || window.event;
-			var keyCode = e.keyCode || e.which;
-			var charCode = e.charCode || e.keyCode;
-			var shiftCode = e.shiftKey || false;
-			//
-			if (keyCode == 9 || (keyCode > 36 && keyCode < 41))
-				return true;
-			//
-			if ((charCode == 32 || charCode == 8 || charCode == 46 || charCode == 110 || charCode == 188 || charCode == 190))
-				return true;	//	Allow backspace, delete, comma and decimal
-			if (maxlength > -1 && this.value.toString().length >= maxlength)
-				return false;	//	Deny
-			if (((charCode > 47 && charCode < 58) || (charCode > 95 && charCode < 106)) && shiftCode == false)
-				return true;	//	Allow numbers
-			else
-				return false;	//	Deny
-		}
-		/*input.onkeyup = function(){
-			if (isNumeric(this.value.replace(/,/g, '')))
-				this.style.color = '';
-			else
-				this.style.color = 'red';
-		};*/
-		input.onchange = function(){
-			this.value = (1*this.value.replace(/,/g, '')).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-			//this.style.color = '';
-		};
-		input.value = (1*input.value.replace(/,/g, '')).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-		input.onfocus = function(){
-			setTimeout(function(){input.select();}, 10);
-		};
-	};
-
-	this.dateInputHandler = function(input){
-		input.onchange = function(){
-			this.style.color = '';
-		};
-	};
-
-	this.textareaHandler = function(messageText){
-		messageText.style.overflow = 'auto';
-		var messageTextHeight = messageText.scrollHeight;
-		messageText.style.overflow = 'hidden';
-		messageText.style.maxWidth = '100%';
-		messageText.style.width = '100%';
-		messageText.onkeyup = function(event){
-			var bkpOffsetHeight = this.offsetHeight;
-			messageText.style.overflow = 'auto';
-			this.style.height = '33px';
-			if (messageTextHeight != this.scrollHeight){
-				var bkpScrollHeight = this.scrollHeight;
-				this.style.height = messageTextHeight + 'px';
-				this.scrollTop = 0;
-				//
-				setTimeout(
-					function(){
-						this.scrollTop = 0;
-						messageText.style.transition = 'height 0.25s';
-						messageText.style.webkitTransition = 'height 0.25s';
-						messageText.style.mozTransition = 'height 0.25s';
-						messageText.style.height = messageTextHeight + 'px';
-					}, 5);
-				//
-				messageTextHeight = bkpScrollHeight;
-				//
-				setTimeout(
-					function(){
-						messageText.style.transition = '';
-						messageText.style.webkitTransition = '';
-						messageText.style.mozTransition = '';
-					}, 500);
-				//
-				messageText.style.overflow = 'hidden';
-			}
-			else{
-				this.style.height = this.scrollHeight + 'px';
-				messageText.style.overflow = 'hidden';
-			}
-			if (typeof event != 'undefined'){
-				event.stopPropagation();
-				event.preventDefault();
-			}
-		}
-		messageText.onkeyup();
-		messageText.onkeypress = function(){
-			messageText.scrollTop = 0;
-			setTimeout(function(){
-						messageText.scrollTop = 0;
-					}, 1);
-			setTimeout(function(){
-						messageText.scrollTop = 0;
-					}, 5);
-		}
-	};
-
-	this.maskedInputHandler = function(input, mask){
-		this.input_box = input;
-		this.input_mask = mask;
-		var _self = this;
-		//
-		var output = mask.replace(/9/g, '_').replace(/A/g, '_');
-		var originalLength = output.length;
-		//
-		input.onkeydown = function(e){
-			e = e || event;
-			var target = e.target || e.srcElement;
-			if ((e.keyCode > 36 && e.keyCode < 41) || e.keyCode == 9)
-				return true;
-			else if (e.keyCode == 46){
-				e.cancelBubble = true;
-				return false;
-			}
-			else if (e.keyCode == 8){
-				var selStart;
-				var totLen = target.value.length;
-				if (document.selection){
-					var oSel = document.selection.createRange();
-					oSel.moveStart ('character', -originalLength);
-					selStart = oSel.text.length;
-				}
-				else
-					selStart = target.selectionStart;
-				//
-				if (selStart == 0)
-					return false;
-				//
-				if (target.value.substring(selStart-1, selStart) != '_' && isNumber(target.value.substring(selStart-1, selStart)))
-					target.value = target.value.substring(0, selStart-1) + '_' + target.value.substring(selStart, totLen);
-				try{
-					target.setSelectionRange(selStart-1, selStart-1);
-				}catch(e){	//	IE 8 support (fir IE testing)
-					var range = target.createTextRange();
-					range.collapse(true);
-					range.moveStart('character', selStart+1);
-					range.moveEnd('character', 0);
-					range.select();
-				}
-				//
-				e.cancelBubble = true;
-				return false;
-			}
-		}
-		//
-		input.onkeypress = function(e){
-			e = e || event;
-			var target = e.target || e.srcElement
-			var ch = String.fromCharCode(e.charCode || e.keyCode);
-			if ((e.keyCode > 36 && e.keyCode < 41) || e.keyCode == 9)
-				return true;
-			else if (!isNumber(ch) || ch == '\t'){
-				e.cancelBubble = true;
-				return false;
-			}
-			var output = _self.input_mask.replace(/9/g, '_').replace(/A/g, '_');
-			var totLen = target.value.length;
-			//
-			var selStart;
-			if (document.selection){
-				var oSel = document.selection.createRange();
-				oSel.moveStart ('character', -originalLength);
-				selStart = oSel.text.length;
-			}
-			else
-				selStart = target.selectionStart;
-			//
-			if (totLen == selStart){
-				e.cancelBubble = true;
-				return false;
-			}
-			//
-			while (selStart < totLen && (target.value.substring(selStart, selStart+1) != '_' && !isNumber(target.value.substring(selStart, selStart+1))))
-				selStart += 1;
-			target.value = target.value.substring(0, selStart) + ch + target.value.substring(selStart+1, totLen);
-			try{
-				target.setSelectionRange(selStart+1, selStart+1);
-			}
-			catch(e){	//	IE 8 support (for IE testing)
-				var range = target.createTextRange();
-				range.collapse(true);
-				range.moveStart('character', selStart+1);
-				range.moveEnd('character', 0);
-				range.select();
-			}
-			//
-			e.cancelBubble = true;
-			return false;
-		}
-		//
-		input.onmouseup = input.onfocus = function(e){
-			if (this.value == '')
-				this.value = output;
-			if (this.value == output)	//	Do not put 'else' on this line
-				try{
-					this.setSelectionRange(0, 0);
-				}
-				catch(e){	//	IE 8 support (for IE testing)
-					var range = this.createTextRange();
-					range.collapse(true);
-					range.moveStart('character', 0);
-					range.moveEnd('character', 0);
-					range.select();
-				}
-		}
-		//
-		input.onblur = function(e){
-			if (this.value == output)
-				this.value = '';
-		}
-	};
-
-	var forms = root.querySelectorAll('form.autopilot');
-	this.autopilotForm = function(form){
-		//form.onsubmit = validate;
-		var type, mask;
-		for (var i = 0; i < form.elements.length; i++){
-			type = form.elements[i].getAttribute('data-validate');
-			mask = form.elements[i].getAttribute('data-mask');
-			if (type != null){
-				if (type == 'alpha'){
-					new arc.alphaInputHandler(form.elements[i]);
-				}
-				else if (type == 'numeric'){
-					new arc.numericInputHandler(form.elements[i]);
-				}
-				else if (type == 'alphanumeric'){
-					new arc.alphaNumericInputHandler(form.elements[i]);
-				}
-				else if (type == 'currency'){
-					new arc.currencyInputHandler(form.elements[i]);
-				}
-				else if (type == 'date'){
-					new arc.dateInputHandler(form.elements[i]);
-				}
-			}
-			else if (mask != null){
-				new arc.maskedInputHandler(form.elements[i], mask);
-			}
-			if (form.elements[i].tagName == 'TEXTAREA')
-				new arc.textareaHandler(form.elements[i]);
-		}
-	};
-	for (var j = 0; j < forms.length; j++)
-		new autopilotForm(forms[j]);
-
-	//	Dom abstraction with shorthand functions and stuff
-	var dom = function(obj){
-		//	Ensure this function is always called as a dynamic instance
-		if (this == window)
-			return new dom(url, options);
-		//
-		//	Shorthand for setting innerHTML
-		this.html = this.HTML = function(innerHTML){
-			if (typeof innerHTML != 'undefined')
-				obj.innerHTML = innerHTML;
-			else
-				return obj.innerHTML;
-		};
-		//
-		//	Shorthand for appendChild
-		this.a = this.appendChild = function(child){
-			obj.appendChild(child);
-		};
-		//
-		//	Shorthand for prependChild
-		this.p = this.prependChild = function(child){
-			if (obj.childNodes.length == 0)
-				obj.appendChild(child);
-			else
-				obj.insertBefore(child, obj.childNodes[0]);
-		};
-		//
-		//	Show and hide elements
-		this.show = function(block){
-			if (typeof block == 'undefined')
-				block = 'block';
-			obj.style.display = block;
-		};
-		this.hide = function(){
-			obj.style.display = 'none';
-		};
-		//
-		//	Shorthand for querySelectorAll
-		this.q = function(selector){
-			var nodes = obj.querySelectorAll(selector);
-			var output = [];
-			for (var i = 0; i < nodes.length; i++)
-				output.push(new dom(nodes[i]));
-			//
-			//	Apply a function for all nodes in list .? (each)
-			output.e = function(func){
-				for (var i = 0; i < output.length; i++)
-					if (output[i] != this)
-						func(output[i]);
-			};
-			return output;
-		};
-		//
-		this.addCls = this.addClass = function(classname){
-			obj.className = obj.className.replace(new RegExp(classname, 'g'), '').trim()+' '+classname;
-		};
-		this.remCls = this.removeClass = function(classname){
-			obj.className = obj.className.replace(new RegExp(classname, 'g'), '').trim();
-		};
-	};
-	this.q = new dom(root).q;//.body
-	this.a = this.q.a;
 
 })(document);
-
-
-
-
 
 
 // ------------------------------------------------------------------------------------
@@ -1036,14 +1099,16 @@ Date.prototype.sqlFormatted = function() {
 
 // ---------------------------------------------------------------------
 
-//	Depricated in favor of DOM abstraction class
-
 HTMLElement.prototype.addClass = function(classname){
 	this.className = this.className.replace(new RegExp(classname, 'g'), '').trim()+' '+classname;
 }
 
 HTMLElement.prototype.removeClass = function(classname){
 	this.className = this.className.replace(new RegExp(classname, 'g'), '').trim();
+}
+
+HTMLElement.prototype.a = function(obj){
+	return this.appendChild(obj);
 }
 
 HTMLElement.prototype.q = function(selector){
@@ -1086,6 +1151,10 @@ if (!String.prototype.trim){
 
 // ------------------------------------------------------------------------------------
 
-setTimeout(console.log('%c{ArcReactor.js}', 'font-weight:bold; font-size:14pt; color:#204080;'), 10);
-setTimeout(console.log('Loaded and Ready...\n\n'), 10);
-setTimeout(console.log('%cThis is a browser feature intended for developers. Do not paste code you receive from strangers here.', 'color:#A84040;'), 10);
+if (navigator.appName == 'testKit')
+	module.exports = arc;
+else{
+	setTimeout(console.log('%c{ArcReactor.js}', 'font-weight:bold; font-size:14pt; color:#204080;'), 10);
+	setTimeout(console.log('Loaded and Ready...\n\n'), 10);
+	setTimeout(console.log('%cThis is a browser feature intended for developers. Do not paste code you receive from strangers here.', 'color:#A84040;'), 10);
+}

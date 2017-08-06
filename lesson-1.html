@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width" />
+		<script type="text/javascript" src="arc.js"></script>
+		<link rel="stylesheet" type="text/css" href="assets/style.css" />
+		<link rel="stylesheet" type="text/css" href="assets/fonts.css" />
+		<link rel="stylesheet" type="text/css" href="assets/font-awesome/css/font-awesome.min.css" />
+		<title>ArcReactor.JS Example app</title>
+	</head>
+	<body>
+		<div class="frame-container">
+
+			<div id="frame-0" class="frame fade">
+				<h1><i class="fa fa-home"></i> Basic Frame</h1><!-- Frame Header -->
+				<container>
+					<!-- Body -->
+					Information Area
+				</container>
+				<center class="bottom">
+					<!-- Frame Footer -->
+					<a class="button" href="lesson-2.html">Go to next lesson <i class="fa fa-arrow-right"></i></a>
+				</center>
+			</div>
+
+			<script>
+				//	Create a navigation point / frame you want to show
+				new arc.nav('frame-0',
+					//	Dom object
+					q('#frame-0')[0],
+					//	EQUAL-TO = document.querySelectorAll('#frame-0')[0]
+					//	EQUAL-TO = document.getElementById('frame-0')
+					//
+					//	The function that runs on entering the frame (like on-load)
+					function(context){
+						alert('Hello');
+					});
+			</script>
+
+		</div>
+		<script>
+			//	Check if user re-visaiting from a previous state
+			if (document.location.hash == '')
+				//	Go to application default starting point
+				document.location.hash = '#frame-0';
+				//
+				//	TO-DO: Save this state in local-storage and load to
+				//	document.location.hash = localStorage['app-state'];
+			else
+				//	This is necessory to fire-up Arc router after page load
+				window.onpopstate();
+		</script>
+	</body>
+</html>

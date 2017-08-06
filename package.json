@@ -1,0 +1,12 @@
+{
+	"name" : "Arc Reactor JS",
+	"version" : "2.1.2",
+	"description" : "A powerful JS library to make development of Single page applications and Cross platform mobile apps easy.",
+	"author" : "Vishva Kumara <vishva8kumara@gmail.com>",
+	"dependencies" : [],
+	"repository" : {"type": "git", "url": "https://github.com/vishva8kumara/arc-reactor.git"},
+	"main" : "arc.js",
+	"scripts": {
+		"test": "make test"
+	}
+}
