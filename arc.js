@@ -28,11 +28,120 @@ var arc = new (function arcReactor(root){
 
 	//	Create a nav frame
 	this.nav = function(hash, obj, callback, kcabllac){
-		/*if (!(obj instanceof dom))
-			obj = new dom(obj);*/
-		navigationTable[hash] = [obj, callback, kcabllac];
-		obj.style.display = 'none';
-		//obj.hide();
+		//*if (!(obj instanceof dom)) obj = new dom(obj);*/ //*if (typeof callback == 'undefined')throw '';else */
+		if (callback.constructor.name == 'arcRequire')
+			navigationTable[hash] = [obj, callback.onload, callback.onunload];
+		//
+		else
+			navigationTable[hash] = [obj, callback, kcabllac];
+		//
+		if (typeof obj == 'undefined')
+			throw 'Expected [object HTMLElement]: parameter 2 for arc.nav()';
+		else
+			obj.style.display = 'none';
+			//obj.hide();
+	};
+
+
+	// ------------------------------------------------------------------------------------
+	//	DYNAMIC SCRIPT AND TEMPLATE LOADER
+	// ------------------------------------------------------------------------------------
+
+	var loaderTemplates = {}, loaderScripts = {};
+	this.require = function(script, template, cacheTimer){//this.loader = 
+		if (typeof cacheTimer == 'undefined')
+			cacheTimer = 10;
+		//
+		return new (function arcRequire(){
+			var module = false, tLoaded = false;
+			//
+			//	Onload Handler - Function to-be called on navigating into activity
+			this.onload = function(context, params, e, loadedCallback){
+				tLoaded = false;
+				//	Dispatch callbacks - bind template to script
+				var exec = function(code){
+					if (typeof code != 'undefined'){
+//console.log('Script ready');
+						//	Emulate in a VM
+						try{
+							module = new (eval('//ArcVM ['+script+']\ntry{'+code+'}catch(e){module.exports = e}'))(context, params, e);
+						}
+						catch(e){
+							//	Error on console if any found
+							console.error(e.toString()+'\n\t'+script+e.stack.split('\n')[1].split('<anonymous>')[1]);//.split(':')[1]
+						}
+					}
+					//	Ready to go ?
+					if (tLoaded && !!module){
+//console.log('Script and Template Ready');
+						if (typeof module == 'object' && typeof module.onload == 'function'){
+							if (module.onload.length == 4)
+								module.onload(context, params, e, loadedCallback);
+							else{
+								module.onload(context, params, e);
+								loadedCallback();
+							}
+							//module = false;
+						}
+						else{
+							if (typeof loadedCallback == 'function')
+								loadedCallback();
+							console.error('No onload method in :'+script);
+						}
+					}
+				};
+				//
+				//	Load Script
+				if (typeof loaderScripts[script] != 'undefined'){//console.log('Script from cache');
+					exec(loaderScripts[script]);
+				}
+				else
+					new arc.ajax(script, {
+						method: GET, cache: cacheTimer,
+						callback: function(data){//console.log('Script from ajax');
+							exec(data.responseText);
+							loaderScripts[script] = data.responseText;
+						}
+					});
+				//
+				//	Load Template
+				if (typeof loaderTemplates[template] != 'undefined'){
+					context.innerHTML = loaderTemplates[template];
+					tLoaded = true;
+//console.log('Template from cache');//console.log(context.innerHTML);
+					exec();
+				}
+				else{
+					context.innerHTML = '';
+					new arc.ajax(template, {
+						method: GET, cache: cacheTimer,
+						callback: function(data){
+							context.innerHTML = data.responseText;
+							tLoaded = true;
+//console.log('Template from ajax');//console.log(context.innerHTML);
+							exec();
+							loaderTemplates[template] = data.responseText;
+						}
+					});
+				}
+			};
+			//
+			//	OnUnload Handler
+			this.onunload = function(context, params, e){
+				if (tLoaded && !!module){//
+					if (typeof module == 'function' && typeof module.onunload == 'function')
+						module.onunload(context, params, e);
+					//
+					else
+						console.warn('No onunload method in :'+script);
+				}
+				//
+				else
+					console.error('onunload called before onload :'+script);
+			};
+			//
+			//loadTemplate(context, 'sign-in', function(){});
+		});
 	};
 
 	window.onpopstate = function(event){
@@ -780,8 +889,8 @@ var arc = new (function arcReactor(root){
 		new autopilotForm(forms[j]);
 
 
-	// ------------------------------------------------------------------------------------
-	//	DYNAMIC SCRIPT AND TEMPLATE LOADER
+	/*/ ------------------------------------------------------------------------------------
+	//	DYNAMIC SCRIPT AND TEMPLATE LOADER ! DEPRICATED
 	// ------------------------------------------------------------------------------------
 
 	var loaderTemplates = {}, loaderScripts = {};
@@ -853,7 +962,7 @@ var arc = new (function arcReactor(root){
 			//
 			//loadTemplate(context, 'sign-in', function(){});
 		};
-	};
+	};*/
 
 
 	// ------------------------------------------------------------------------------------
@@ -972,6 +1081,98 @@ var arc = new (function arcReactor(root){
 	//	TOUCH SLIDER
 	// ------------------------------------------------------------------------------------
 
+	this.slides = function(dom){
+		var n = parseInt(dom.offsetWidth / window.innerWidth);
+		var _self = this;
+		this.startx = false;
+		this.delta = 0;
+		this.eleLeft = -99;
+		//
+		dom.addEventListener('mousedown', function(e){
+			_self.startx = 100 * e.clientX / window.innerWidth;
+			e.preventDefault();
+		}, false);
+		dom.addEventListener('touchstart', function(e){
+			_self.startx = 100 * e.changedTouches[0].clientX / window.innerWidth;
+			dom.removeClass('sliding');
+			e.preventDefault();
+		}, false);
+		//
+		dom.addEventListener('mousemove', function(e){
+			if (_self.startx === false || e.buttons != 1)
+				return false;
+			//
+			_self.delta = (100 * e.clientX / window.innerWidth) - _self.startx;
+			dom.style.left = (_self.eleLeft + _self.delta) + '%';
+			e.preventDefault();
+		}, false);
+		dom.addEventListener('touchmove', function(e){
+			_self.delta = (100 * e.changedTouches[0].clientX / window.innerWidth) - _self.startx;
+			dom.style.left = (_self.eleLeft + _self.delta) + '%';
+			e.preventDefault();
+		}, false);
+		//
+		dom.onmouseup = dom.onmouseout = function(e){
+			_self.startx = false;
+			_self.flipSlide();
+			e.preventDefault();
+		};
+		dom.addEventListener('touchend', function(e){
+			_self.flipSlide();
+			e.preventDefault();
+		}, false);
+		//
+		this.flipSlide = function(){
+			if (_self.delta > 10)
+				_self.eleLeft += 100;
+			else if (_self.delta < -10)
+				_self.eleLeft -= 100;
+			//
+			//	Jump from start to end
+			if (_self.eleLeft > -99){
+				dom.removeClass('sliding');
+				//dom.addClass('active');
+				setTimeout(function(){
+					dom.style.left = (-100 * (dom.childNodes.length - 1) + _self.delta) + '%';
+					//
+					_self.eleLeft = -100 * (dom.childNodes.length - 2);
+					setTimeout(function(){
+						dom.addClass('sliding');
+						//dom.removeClass('active');
+						dom.style.left = _self.eleLeft + '%';
+						//
+						_self.delta = 0;
+					}, 50);
+				}, 50);
+			}
+			//	Jump from end to start
+			else if (_self.eleLeft / -100 > dom.childNodes.length - 2){
+				dom.removeClass('sliding');
+				//dom.addClass('active');
+				setTimeout(function(){
+					dom.style.left = (1 + _self.delta) + '%';
+					//
+					_self.eleLeft = -99;
+					setTimeout(function(){
+						dom.addClass('sliding');
+						//dom.removeClass('active');
+						dom.style.left = '-99%';
+						//
+						_self.delta = 0;
+					}, 50);
+				}, 50);
+			}
+			else{
+				dom.addClass('sliding');
+				setTimeout(function(){
+					dom.style.left = _self.eleLeft + '%';
+				}, 50);
+				_self.delta = 0;
+			}
+			//
+		};
+	}
+
 	this.touchSlide = function(ele, bg, stepWidth){
 		var _self = this;
 		this.startx = 0;
@@ -1012,6 +1213,45 @@ var arc = new (function arcReactor(root){
 			_self.delta = 0;
 			e.preventDefault();
 		}, false);
+	};
+
+
+	// ------------------------------------------------------------------------------------
+	//	HEIGHT GROW / SHRINK ANIMATION
+	// ------------------------------------------------------------------------------------
+
+	this.heightGrow = function(obj){
+		obj.style.display = 'block';
+		obj.style.overflow = 'hidden';
+		//var transition = obj.style.transition;
+		obj.style.transition = '';
+		obj.style.height = 'auto';
+		var height = obj.offsetHeight;
+		obj.style.height = '0px';
+		obj.style.transition = 'height 0.33s';
+		setTimeout(function(){
+			obj.style.height = height+'px';
+		}, 5);
+		setTimeout(function(){
+			obj.style.height = 'auto';
+			obj.style.transition = '';
+		}, 360);
+	};
+
+	this.heightShrink = function(obj){
+		obj.style.transition = '';
+		obj.style.height = 'auto';
+		obj.style.overflow = 'hidden';
+		var height = obj.offsetHeight;
+		obj.style.height = height+'px';
+		obj.style.transition = 'height 0.33s';
+		setTimeout(function(){
+			obj.style.height = '0px';
+		}, 1);
+		setTimeout(function(){
+			obj.style.transition = '';
+			obj.style.display = 'none';
+		}, 360);
 	};
 
 
@@ -1120,6 +1360,18 @@ function q(selector){
 	return document.querySelectorAll(selector);
 }
 
+String.prototype.hash = function() {
+	var hash = 0, i, chr;
+	if (this.length === 0)
+		return hash;
+	for (i = 0; i < this.length; i++) {
+		chr   = this.charCodeAt(i);
+		hash  = ((hash << 5) - hash) + chr;
+		hash |= 0;
+	}
+	return hash;
+};
+
 // ---------------------------------------------------------------------
 
 var GET = 'GET', POST = 'POST';
@@ -1128,7 +1380,7 @@ var isNumeric = isNumber = function(n) {
 	return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
-var isSet = isSet = function(obj) {
+var isSet = isset = function(obj) {
 	return typeof obj != 'undefined';
 }
 
