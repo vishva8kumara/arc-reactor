@@ -289,6 +289,10 @@ var arc = new (function arcReactor(root){
 				}
 				this.xmlhttp.setRequestHeader("content-type", "application/x-www-form-urlencoded");
 			}
+			else if (_this.data.constructor.name == 'FormData'){
+				this.xmlhttp.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+				params = _this.data;
+			}
 			else if (typeof _this.data == 'object'){
 				params = JSON.stringify(_this.data);
 				this.xmlhttp.setRequestHeader("content-type", "application/json");
