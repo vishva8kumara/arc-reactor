@@ -57,6 +57,8 @@ var arc = new (function arcReactor(root){
 					onLoadCallCandidates.push([navigationTable[path], hash.slice(i+1)]);
 			}
 		}
+		if (onLoadCallCandidates.length == 0)
+			return false;
 		//
 		var waitLoading = false;
 		var waitCallback = function(){
@@ -84,18 +86,13 @@ var arc = new (function arcReactor(root){
 			}
 		//
 		//	Call onload function
-		if (onLoadCallCandidates.length > 0){
-			onLoadCallCandidates = onLoadCallCandidates[onLoadCallCandidates.length - 1];
-			if (onLoadCallCandidates[0][1].length == 4){
-				onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event, waitCallback);
-				waitLoading = true;
-			}
-			else{
-				onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event);
-			}
-			/*var charts = onLoadCallCandidates[0][0].q('.chart');
-			for (var c = 0; c < charts.length; c++)
-				charts[c].innerHTML = loadingIndicator;*/
+		onLoadCallCandidates = onLoadCallCandidates[onLoadCallCandidates.length - 1];
+		if (onLoadCallCandidates[0][1].length == 4){
+			onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event, waitCallback);
+			waitLoading = true;
+		}
+		else{
+			onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event);
 		}
 		//
 		//	Display frames right-away
@@ -207,7 +204,7 @@ var arc = new (function arcReactor(root){
 					console.log('Ajax: Callback \''+_this.callback+'\' is neither function, nor object or an ID of an object.');
 			}
 			//
-			if (typeof _this.evalScripts != 'undefined'){
+			if (_this.evalScripts){
 				var P0 = data.responseText.indexOf('<script');
 				while (P0 > -1){
 					var P0 = data.responseText.indexOf('>', P0) + 1;
