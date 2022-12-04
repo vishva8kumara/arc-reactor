@@ -22,9 +22,9 @@ var arc = new (function arcReactor(root){
 	//	Navigation handler / wrapper for SPA
 	// ------------------------------------------------------------------------------------
 
-	var navigationTable = {};
-	var navigationActiveStack = [];
+	this.navigationActiveStack = [];
 	var backButtonStack = [];
+	var navigationTable = {};
 
 	//	Create a nav frame
 	this.nav = function(hash, obj, callback, kcabllac){
@@ -35,8 +35,9 @@ var arc = new (function arcReactor(root){
 		else
 			navigationTable[hash] = [obj, callback, kcabllac];
 		//
-		if (typeof obj == 'undefined')
-			throw 'Expected [object HTMLElement]: parameter 2 for arc.nav()';
+		if (typeof obj == 'undefined' || obj == null)
+			console.error('Expected [object HTMLElement]: parameter 2 for arc.nav()');
+			//throw 'Expected [object HTMLElement]: parameter 2 for arc.nav()';
 		else
 			obj.style.display = 'none';
 			//obj.hide();
@@ -49,36 +50,53 @@ var arc = new (function arcReactor(root){
 
 	var loaderTemplates = {}, loaderScripts = {};
 	this.require = function(script, template, cacheTimer){//this.loader = 
-		if (typeof cacheTimer == 'undefined')
-			cacheTimer = 10;
 		//
 		return new (function arcRequire(){
-			var module = false, tLoaded = false;
+			var mod = false, tLoaded = false, _self = this;
+			//
+			this.preload = setTimeout(function(){
+				new arc.ajax(template, {
+					method: GET,
+					callback: function(data){
+						loaderTemplates[template] = data.responseText;
+					}
+				});
+				new arc.ajax(script, {
+					method: GET,
+					callback: function(data){}
+				});
+				/*var scr = arc.elem('script', null, {'type': 'text/javascript', 'src': script});
+				scr.onload = function(){
+					loaderScripts[script] = module.exports;
+					module = {'exports': {}};
+				};
+				document.head.appendChild(scr);*/
+			}, 1800);
 			//
 			//	Onload Handler - Function to-be called on navigating into activity
 			this.onload = function(context, params, e, loadedCallback){
 				tLoaded = false;
+				clearTimeout(_self.preload);
 				//	Dispatch callbacks - bind template to script
 				var exec = function(code){
 					if (typeof code != 'undefined'){
-//console.log('Script ready');
-						//	Emulate in a VM
+						mod = code;
+						/*//	Emulate in a VM
 						try{
 							module = new (eval('//ArcVM ['+script+']\ntry{'+code+'}catch(e){module.exports = e}'))(context, params, e);
 						}
 						catch(e){
 							//	Error on console if any found
 							console.error(e.toString()+'\n\t'+script+e.stack.split('\n')[1].split('<anonymous>')[1]);//.split(':')[1]
-						}
+						}*/
 					}
 					//	Ready to go ?
-					if (tLoaded && !!module){
-//console.log('Script and Template Ready');
-						if (typeof module == 'object' && typeof module.onload == 'function'){
-							if (module.onload.length == 4)
-								module.onload(context, params, e, loadedCallback);
+					if (tLoaded && !!mod){
+						if (typeof mod == 'object' && typeof mod.onload == 'function'){
+							if (mod.onload.length == 4)
+								mod.onload(context, params, e, loadedCallback);
 							else{
-								module.onload(context, params, e);
+								mod.onload(context, params, e);
 								loadedCallback();
 							}
 							//module = false;
@@ -95,30 +113,36 @@ var arc = new (function arcReactor(root){
 				if (typeof loaderScripts[script] != 'undefined'){//console.log('Script from cache');
 					exec(loaderScripts[script]);
 				}
-				else
-					new arc.ajax(script, {
-						method: GET, cache: cacheTimer,
+				else{
+					/*new arc.ajax(script, {
+						method: GET,// cache: cacheTimer,
 						callback: function(data){//console.log('Script from ajax');
 							exec(data.responseText);
 							loaderScripts[script] = data.responseText;
 						}
-					});
+					});*/
+					var scr = arc.elem('script', null, {'type': 'text/javascript', 'src': script});
+					scr.onload = function(){
+						loaderScripts[script] = module.exports;
+						module = {'exports': {}};
+						exec(loaderScripts[script]);
+					};
+					document.head.appendChild(scr);
+				}
 				//
 				//	Load Template
 				if (typeof loaderTemplates[template] != 'undefined'){
 					context.innerHTML = loaderTemplates[template];
 					tLoaded = true;
-//console.log('Template from cache');//console.log(context.innerHTML);
 					exec();
 				}
 				else{
 					context.innerHTML = '';
 					new arc.ajax(template, {
-						method: GET, cache: cacheTimer,
+						method: GET,// cache: cacheTimer,
 						callback: function(data){
 							context.innerHTML = data.responseText;
 							tLoaded = true;
-//console.log('Template from ajax');//console.log(context.innerHTML);
 							exec();
 							loaderTemplates[template] = data.responseText;
 						}
@@ -128,9 +152,9 @@ var arc = new (function arcReactor(root){
 			//
 			//	OnUnload Handler
 			this.onunload = function(context, params, e){
-				if (tLoaded && !!module){//
-					if (typeof module == 'function' && typeof module.onunload == 'function')
-						module.onunload(context, params, e);
+				if (tLoaded && !!mod){//
+					if (typeof mod == 'object' && typeof mod.onunload == 'function')
+						mod.onunload(context, params, e);
 					//
 					else
 						console.warn('No onunload method in :'+script);
@@ -145,20 +169,20 @@ var arc = new (function arcReactor(root){
 	};
 
 	window.onpopstate = function(event){
-		//	Set classname for the parent of active anchor
-		var anchors = root.querySelectorAll('nav a[href^=\\#], ul.tabs a[href^=\\#]');
-		for (var i = 0; i < anchors.length; i++)
+		/*/	Set classname for the parent of active anchor
+		let anchors = root.querySelectorAll('nav a[href^=\\#], ul.tabs a[href^=\\#]');
+		for (let i = 0; i < anchors.length; i++)
 			if (document.location.hash.substring(1).startsWith(anchors[i].href.split('#')[1]))
 				anchors[i].parentNode.addClass('active');
 			else
-				anchors[i].parentNode.removeClass('active');
+				anchors[i].parentNode.removeClass('active');*/
 		//
 		//	Process difference of states
-		var tmpStack = [];
-		var onLoadCallCandidates = [];
+		let tmpStack = [];
+		let onLoadCallCandidates = [];
 		hash = document.location.hash.replace('#', '').split('/');
-		for (var i = 0; i < hash.length; i++){
-			var path = hash.slice(0, i+1).join('/');
+		for (let i = 0; i < hash.length; i++){
+			let path = hash.slice(0, i+1).join('/');
 			if (typeof navigationTable[path] != 'undefined'){
 				tmpStack.push(navigationTable[path].concat([hash.slice(i+1).join('/')]));
 				//	List candidate onload functions - we are calling only the last
@@ -169,55 +193,62 @@ var arc = new (function arcReactor(root){
 		if (onLoadCallCandidates.length == 0)
 			return false;
 		//
-		var waitLoading = false;
-		var waitCallback = function(){
+		//let waitLoading = false;
+		let waitRenderCallback = function(){
+			//arc.waitRenderCallback = function(){};
 			//	Show frames to be active
-			navigationActiveStack = [];
-			for (var i = 0; i < tmpStack.length; i++){
+			arc.navigationActiveStack = [];
+			for (let i = 0; i < tmpStack.length; i++){
 				tmpStack[i][0].style.display = 'block';
 				new function(obj){
 					setTimeout(function(){obj.addClass('active');}, 10);
 				}(tmpStack[i][0]);
-				navigationActiveStack.push(tmpStack[i]);
+				arc.navigationActiveStack.push(tmpStack[i]);
 			}
 		};
 		//
 		//	Hide frames to be inactive
-		for (var i = 0; i < navigationActiveStack.length; i++)
-			if (!existInStack(tmpStack, navigationActiveStack[i])){
+		for (let i = 0; i < arc.navigationActiveStack.length; i++)
+			if (!existInStack(tmpStack, arc.navigationActiveStack[i])){
 				//	Call onUnload function
-				if (typeof navigationActiveStack[i][2] == 'function')
-					navigationActiveStack[i][2](navigationActiveStack[i][0], event);
-				navigationActiveStack[i][0].removeClass('active');
+				if (typeof arc.navigationActiveStack[i][2] == 'function')
+					arc.navigationActiveStack[i][2](arc.navigationActiveStack[i][0], event);
+				arc.navigationActiveStack[i][0].removeClass('active');
 				new function(obj){
 					setTimeout(function(){obj.style.display = 'none';}, 250);
-				}(navigationActiveStack[i][0]);
+					//setTimeout(function(){obj.style.display = 'none';}, 750);
+				}(arc.navigationActiveStack[i][0]);
 			}
 		//
 		//	Call onload function
 		onLoadCallCandidates = onLoadCallCandidates[onLoadCallCandidates.length - 1];
 		if (onLoadCallCandidates[0][1].length == 4){
-			onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event, waitCallback);
-			waitLoading = true;
+			onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event, function(){});//arc.waitRenderCallback);
+			//waitLoading = true;
 		}
 		else{
 			onLoadCallCandidates[0][1](onLoadCallCandidates[0][0], onLoadCallCandidates[1], event);
 		}
 		//
+		//	Send pageview to Google Analytics
+		if (typeof ga == 'function')
+			ga('send', 'pageview', document.location.pathname+document.location.hash);
+		//
 		//	Display frames right-away
-		if (!waitLoading)
-			waitCallback();
+		//if (!waitLoading){
+		waitRenderCallback();
+		//}
 		//
 		document.body.scrollLeft = 0;
 		document.body.scrollTop = 0;
 		backButtonStack = [];
-		if (navigator.vibrate)
-			navigator.vibrate(25);
+		/*if (navigator.vibrate)
+			navigator.vibrate(25);*/
 	};
 
 	window.addEventListener('keyup',
 		function(e){
-			var evt = e || window.event;
+			let evt = e || window.event;
 			if (evt.keyCode == 27){
 				if (backButtonStack.length == 0)
 					history.back();
@@ -226,7 +257,7 @@ var arc = new (function arcReactor(root){
 			}
 		});
 
-	document.addEventListener('backbutton',
+	window.addEventListener('backbutton',
 		function(){
 			if (backButtonStack.length == 0)
 				history.back();
@@ -235,14 +266,14 @@ var arc = new (function arcReactor(root){
 		}, false);
 
 	var existInActiveStack = function(dom, params){
-		for (var i = 0; i < navigationActiveStack.length; i++)
-			if (navigationActiveStack[i][0] == dom && navigationActiveStack[i][3] == params)
+		for (let i = 0; i < arc.navigationActiveStack.length; i++)
+			if (arc.navigationActiveStack[i][0] == dom && arc.navigationActiveStack[i][3] == params)
 				return true;
 		return false;
 	};
 
 	var existInStack = function(tmpStack, obj){
-		for (var i = 0; i < tmpStack.length; i++)
+		for (let i = 0; i < tmpStack.length; i++)
 			if (tmpStack[i][0] == obj[0])
 				return true;
 		return false;
@@ -274,7 +305,7 @@ var arc = new (function arcReactor(root){
 		this.async = true;
 		this.timeout = -1;
 		//	Option aliasing
-		var opts = {'method': 'method', 'type': 'method', 'data': 'data', 'form': 'data', 'callback': 'callback', 'success': 'callback',
+		let opts = {'method': 'method', 'type': 'method', 'data': 'data', 'form': 'data', 'callback': 'callback', 'success': 'callback',
 				'failback': 'failback', 'fallback': 'failback','error': 'failback', 'progress': 'progress', 'onprogress': 'progress',
 				'async': 'async', 'asynchronous': 'async', 'timeout': 'timeout', 'ontimeout': 'ontimeout', 'url': 'url', 'uri': 'url',
 				'headers': 'headers', 'evalScripts': 'evalScripts', 'eval': 'evalScripts', 'doCache': 'doCache', 'cache': 'doCache'};
@@ -284,7 +315,7 @@ var arc = new (function arcReactor(root){
 			url = options['url'] || options['uri'];
 		}
 		//	Process option aliases
-		for (var key in options)
+		for (let key in options)
 			if (typeof opts[key] != 'undefined')
 				this[opts[key]] = options[key];
 			else
@@ -306,18 +337,18 @@ var arc = new (function arcReactor(root){
 			else if (typeof _this.callback == 'object' && _this.callback.toString().indexOf("Element") > -1)
 				_this.callback.innerHTML = data.responseText;
 			else{
-				var elem = document.getElementById(_this.callback);
+				let elem = document.getElementById(_this.callback);
 				if (typeof elem == 'object' && elem.toString().indexOf("Element") > -1)
 					elem.innerHTML = data.responseText;
 				else
 					console.log('Ajax: Callback \''+_this.callback+'\' is neither function, nor object or an ID of an object.');
 			}
-			//
-			if (_this.evalScripts){
-				var P0 = data.responseText.indexOf('<script');
+			//	DEPRECATED - LEGACY SUPPORT OF SAMEORIGIN INLINE JS
+			/*if (typeof _this.evalScripts != 'undefined'){
+				let P0 = data.responseText.indexOf('<script');
 				while (P0 > -1){
-					var P0 = data.responseText.indexOf('>', P0) + 1;
-					var P1 = data.responseText.indexOf('</script', P0);
+					P0 = data.responseText.indexOf('>', P0) + 1;
+					let P1 = data.responseText.indexOf('</script', P0);
 					if (typeof _this.evalScripts != 'function')
 						_this.evalScripts(data.responseText.substring(P0, P1));
 					else
@@ -329,7 +360,7 @@ var arc = new (function arcReactor(root){
 						}
 					P0 = data.responseText.indexOf('<script', P1);
 				}
-			}
+			}*/
 		}
 		//
 		if (this.doCache === true && typeof localStorage[url] != 'undefined'){
@@ -369,34 +400,37 @@ var arc = new (function arcReactor(root){
 			}
 		};
 		if (typeof _this.progress == 'function')
-			this.xmlhttp.onprogress = function(data){_this.progress(100 * data.loaded / data.total)};
+			this.xmlhttp.onprogress = function(data){
+				_this.progress(100 * data.loaded / data.total)
+			};
 		if (typeof _this.ontimeout == 'function' && _this.timeout != -1){
 			this.xmlhttp.ontimeout = _this.ontimeout;
 			this.xmlhttp.timeout = _this.timeout;
 		}
 		//
 		if (typeof _this.headers != 'undefined')
-			for (var key in _this.headers)
+			for (let key in _this.headers)
 				this.xmlhttp.setRequestHeader(key, _this.headers[key]);
 		if (csrftoken != false)
 			this.xmlhttp.setRequestHeader("X-CSRFToken", csrftoken);
 		//
 		if (_this.method.toUpperCase() == "POST"){
-			var params = '';
+			let params = '';
 			if (_this.data == null){}
 			else if (_this.data.toString().indexOf("Form") > -1 && (typeof _this.data.tagName != 'undefined' && _this.data.tagName == "FORM")){
-				for (var i = 0; i < _this.data.elements.length; i++) {
-					if (_this.data.elements[i].type == "checkbox")
-						params += _this.data.elements[i].checked ? (params == '' ? '' : '&') + _this.data.elements[i].name + '=on' : '';
-					else if (_this.data.elements[i].type == "radio")
-						params += _this.data.elements[i].checked ? (params == '' ? '' : '&') + _this.data.elements[i].name + '=' + encodeURIComponent(_this.data.elements[i].value) : '';
-					else
-						params += (params == '' ? '' : '&') + _this.data.elements[i].name + '=' + encodeURIComponent(_this.data.elements[i].value);
-				}
+				for (let i = 0; i < _this.data.elements.length; i++)
+					if (_this.data.elements[i].name != ''){
+						if (_this.data.elements[i].type == "checkbox")
+							params += _this.data.elements[i].checked ? (params == '' ? '' : '&') + _this.data.elements[i].name + '=on' : '';
+						else if (_this.data.elements[i].type == "radio")
+							params += _this.data.elements[i].checked ? (params == '' ? '' : '&') + _this.data.elements[i].name + '=' + encodeURIComponent(_this.data.elements[i].value) : '';
+						else
+							params += (params == '' ? '' : '&') + _this.data.elements[i].name + '=' + encodeURIComponent(_this.data.elements[i].value);
+					}
 				this.xmlhttp.setRequestHeader("content-type", "application/x-www-form-urlencoded");
 			}
 			else if (_this.data.constructor.name == 'FormData'){
-				this.xmlhttp.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+				//this.xmlhttp.setRequestHeader("content-type", "application/x-www-form-urlencoded");
 				params = _this.data;
 			}
 			else if (typeof _this.data == 'object'){
@@ -425,23 +459,27 @@ var arc = new (function arcReactor(root){
 
 	//	Create a Dom Element of given type, innerHTML and options
 	this.elem = function(tagname, innerHTML, options){
-		var obj = document.createElement(tagname);
+		let obj = document.createElement(tagname);
 		if (typeof innerHTML !== 'undefined' && innerHTML != null && innerHTML != false)
 			obj.innerHTML = innerHTML;
 		if (typeof options !== 'undefined')
-			for (var key in options)
-				obj.setAttribute(key, options[key]);
+			for (let key in options){
+				if (typeof options[key] == 'function')
+					obj[key] = options[key];
+				else
+					obj.setAttribute(key, options[key]);
+			}
 		return obj;
 	};
 
 	//	Read DOM tree and generate JSON
 	this.read = function(dom, index){
-		var obj = {};
+		let obj = {};
 		if (typeof dom == 'string')
 			dom = arc.elem('div', dom).childNodes[0];
 		if (typeof index == 'undefined')
 			var index = {};
-		for (var i = 0; i < dom.attributes.length; i++){
+		for (let i = 0; i < dom.attributes.length; i++){
 			obj[dom.attributes[i].name] = dom.attributes[i].value;
 			if (dom.attributes[i].value.substring(0, 2) == '{{' && dom.attributes[i].value.substr(-2) == '}}')
 				index[dom.attributes[i].value.replace('{{', '').replace('}}', '')] = [obj, dom.attributes[i].name];
@@ -452,17 +490,17 @@ var arc = new (function arcReactor(root){
 				index[dom.innerHTML.replace('{{', '').replace('}}', '')] = [obj, 'content'];
 		}
 		else if (dom.children.length == 1){
-			var res = arc.read(dom.children[0], index);
+			let res = arc.read(dom.children[0], index);
 			obj.content = res[0];
 		}
 		else{
 			obj.content = [];
-			for (var i = 0; i < dom.children.length; i++){
-				var res = arc.read(dom.children[i], index);
+			for (let i = 0; i < dom.children.length; i++){
+				let res = arc.read(dom.children[i], index);
 				obj.content.push(res[0]);
 			}
 		}
-		var output = {};
+		let output = {};
 		output[dom.tagName.toLowerCase()] = obj;
 		return [output, index];
 	};
@@ -470,7 +508,7 @@ var arc = new (function arcReactor(root){
 	//	Generate DOM tree from JSON
 	this.react = function(data, schema){
 		//var arrayIgnore = ['min', 'max', 'sum', 'avg'];
-		for (var key in schema[1])
+		for (let key in schema[1])
 			if (arrayIgnore.indexOf(key) == -1)
 				schema[1][key][0][schema[1][key][1]] = data[key];
 		return arc.tree(schema[0]);//Object.assign({}, schema)
@@ -479,16 +517,16 @@ var arc = new (function arcReactor(root){
 	//	Generate a DOM tree from a JavaScript object or JSON Schema/Object
 	//	This is depricated - Use react instead - which is more efficient.
 	this.reactor = function(data){
-		var obj;
-		for (var tagname in data){
+		let obj;
+		for (let tagname in data){
 			obj = document.createElement(tagname);
-			for (var key in data[tagname]){
-				var value = data[tagname][key]
+			for (let key in data[tagname]){
+				let value = data[tagname][key]
 				if (key == 'content'){
 					if (typeof value == 'string' || typeof value == 'number')
 						obj.innerHTML = value;
 					else if (Array.isArray(value))
-						for (var i = 0; i < value.length; i++)
+						for (let i = 0; i < value.length; i++)
 							obj.appendChild(arc.reactor(value[i]));			//	Recursion point
 					else if (value instanceof HTMLElement)
 						obj.appendChild(value);
@@ -506,11 +544,11 @@ var arc = new (function arcReactor(root){
 
 	//	Generate DOM tree from JSON
 	this.tree = function(data){
-		var obj;
-		for (var tagname in data){
+		let obj;
+		for (let tagname in data){
 			obj = document.createElement(tagname);
-			for (var key in data[tagname]){
-				var value = data[tagname][key]
+			for (let key in data[tagname]){
+				let value = data[tagname][key]
 				if (key == 'content'){
 					if (typeof value == 'string' || typeof value == 'number')
 						obj.innerHTML = value;
@@ -518,7 +556,7 @@ var arc = new (function arcReactor(root){
 						if (typeof value.length == 'undefined')
 							obj.appendChild(arc.tree(value));
 						else
-							for (var i = 0; i < value.length; i++)
+							for (let i = 0; i < value.length; i++)
 								obj.appendChild(arc.tree(value[i]));
 				}
 				else if (typeof value == 'function' /*key.substring(0, 2) == 'on'*/)
@@ -532,9 +570,9 @@ var arc = new (function arcReactor(root){
 
 	//	Generate HTML Table from JSON data and a JSON schema
 	this.tbl = function(data, schema){
-		var table = elem('table', false, {class: 'table-striped', width: '100%'});
-		var tr = table.appendChild(elem('tr', false, {'data-id': 'head'}));
-		for (var i = 0; i < schema.length; i++){
+		let table = elem('table', false, {class: 'table-striped', width: '100%'});
+		let tr = table.appendChild(elem('tr', false, {'data-id': 'head'}));
+		for (let i = 0; i < schema.length; i++){
 			if (typeof schema[i].type != 'undefined'){
 				if (schema[i].type == 'numeric')
 					tr.appendChild(elem('th', schema[i].title, {align: 'right'}));
@@ -544,10 +582,10 @@ var arc = new (function arcReactor(root){
 			else
 				tr.appendChild(elem('th', schema[i].title));
 		}
-		var tmp;
-		for (var i = 0; i < data.length; i++){
+		let tmp;
+		for (let i = 0; i < data.length; i++){
 			tr = table.appendChild(elem('tr', false, {'data-id': (data[i].id != undefined ? data[i].id : '')}));
-			for (var j = 0; j < schema.length; j++){
+			for (let j = 0; j < schema.length; j++){
 				tmp = data[i][schema[j].name];
 				if (schema[j]['enum'] != undefined && typeof schema[j]['enum'][tmp] != 'undefined')
 					tmp = schema[j]['enum'][tmp];
@@ -570,14 +608,14 @@ var arc = new (function arcReactor(root){
 	// ------------------------------------------------------------------------------------
 
 	this.numericInputHandler = function(input){
-		var maxlength = input.getAttribute('maxlength') == undefined ? -1 : input.getAttribute('maxlength')*1;
+		let maxlength = input.getAttribute('maxlength') == undefined ? -1 : input.getAttribute('maxlength')*1;
 		input.onkeydown = function(e){
 			e = e || window.event;
-			var keyCode = e.keyCode || e.which;
-			var charCode = e.charCode || e.keyCode;
-			var shiftCode = e.shiftKey || false;
+			let keyCode = e.keyCode || e.which;
+			let charCode = e.charCode || e.keyCode;
+			let shiftCode = e.shiftKey || false;
 			//
-			if (keyCode == 9 || keyCode == 13 || (keyCode > 36 && keyCode < 41))
+			if (keyCode == 9 || keyCode == 13 || keyCode == 109 || keyCode == 110 || keyCode == 189 || keyCode == 190 || (keyCode > 36 && keyCode < 41))
 				return true;
 			//
 			if ((charCode == 32 || charCode == 8 || charCode == 46))// && shiftCode == false
@@ -601,13 +639,13 @@ var arc = new (function arcReactor(root){
 	this.alphaInputHandler = function(input){
 		input.onkeydown = function(e){0
 			e = e || window.event;
-			var keyCode = e.keyCode || e.which;
+			let keyCode = e.keyCode || e.which;
 			//
 			if (keyCode == 9 || keyCode == 13 || (keyCode > 36 && keyCode < 41))
 				return true;
 			//
 			e = e || window.event;
-			var charCode = e.charCode || e.keyCode;
+			let charCode = e.charCode || e.keyCode;
 			if (charCode == 32 || charCode == 8 || charCode == 46)
 				return true;	//	Allow backspace / delete / space
 			if (charCode < 65 || charCode > 90)
@@ -621,14 +659,14 @@ var arc = new (function arcReactor(root){
 	this.alphaNumericInputHandler = function(input){
 		input.onkeydown = function(e){
 			e = e || window.event;
-			var keyCode = e.keyCode || e.which;
-			var charCode = e.charCode || e.keyCode;
-			var shiftCode = e.shiftKey || false;
+			let keyCode = e.keyCode || e.which;
+			let charCode = e.charCode || e.keyCode;
+			let shiftCode = e.shiftKey || false;
 			//
 			if (((charCode > 47 && charCode < 58) || (charCode > 95 && charCode < 106)) && shiftCode == false)
 				return true;	//	Allow numbers
 			//
-			if (keyCode == 9 || keyCode == 13 || (keyCode > 36 && keyCode < 41))
+			if (keyCode == 9 || keyCode == 13 || keyCode == 109 || keyCode == 110 || keyCode == 189 || keyCode == 190 || (keyCode > 36 && keyCode < 41))
 				return true;
 			//
 			if (charCode == 32 || charCode == 8 || charCode == 46)
@@ -642,17 +680,17 @@ var arc = new (function arcReactor(root){
 	};
 
 	this.currencyInputHandler = function(input){
-		var maxlength = input.getAttribute('maxlength') == undefined ? -1 : input.getAttribute('maxlength')*1;
+		let maxlength = input.getAttribute('maxlength') == undefined ? -1 : input.getAttribute('maxlength')*1;
 		input.onkeydown = function(e){
 			e = e || window.event;
-			var keyCode = e.keyCode || e.which;
-			var charCode = e.charCode || e.keyCode;
-			var shiftCode = e.shiftKey || false;
+			let keyCode = e.keyCode || e.which;
+			let charCode = e.charCode || e.keyCode;
+			let shiftCode = e.shiftKey || false;
 			//
 			if (keyCode == 9 || keyCode == 13 || (keyCode > 36 && keyCode < 41))
 				return true;
 			//
-			if ((charCode == 32 || charCode == 8 || charCode == 46 || charCode == 110 || charCode == 188 || charCode == 190))
+			if ((charCode == 32 || charCode == 8 || charCode == 46 || charCode == 110 || charCode == 188 || charCode == 189 || charCode == 190))
 				return true;	//	Allow backspace, delete, comma and decimal
 			if (maxlength > -1 && this.value.toString().length >= maxlength)
 				return false;	//	Deny
@@ -685,16 +723,16 @@ var arc = new (function arcReactor(root){
 
 	this.textareaHandler = function(messageText){
 		messageText.style.overflow = 'auto';
-		var messageTextHeight = messageText.scrollHeight;
+		let messageTextHeight = messageText.scrollHeight;
 		messageText.style.overflow = 'hidden';
 		messageText.style.maxWidth = '100%';
 		messageText.style.width = '100%';
 		messageText.onkeyup = function(event){
-			var bkpOffsetHeight = this.offsetHeight;
+			let bkpOffsetHeight = this.offsetHeight;
 			messageText.style.overflow = 'auto';
 			this.style.height = '33px';
 			if (messageTextHeight != this.scrollHeight){
-				var bkpScrollHeight = this.scrollHeight;
+				let bkpScrollHeight = this.scrollHeight;
 				this.style.height = messageTextHeight + 'px';
 				this.scrollTop = 0;
 				//
@@ -744,12 +782,12 @@ var arc = new (function arcReactor(root){
 		this.input_mask = mask;
 		var _self = this;
 		//
-		var output = mask.replace(/9/g, '_').replace(/A/g, '_');
-		var originalLength = output.length;
+		let output = mask.replace(/9/g, '_').replace(/A/g, '_');
+		let originalLength = output.length;
 		//
 		input.onkeydown = function(e){
 			e = e || event;
-			var target = e.target || e.srcElement;
+			let target = e.target || e.srcElement;
 			if ((e.keyCode > 36 && e.keyCode < 41) || e.keyCode == 9 || e.keyCode == 13)
 				return true;
 			else if (e.keyCode == 46){
@@ -757,10 +795,10 @@ var arc = new (function arcReactor(root){
 				return false;
 			}
 			else if (e.keyCode == 8){
-				var selStart;
-				var totLen = target.value.length;
+				let selStart;
+				let totLen = target.value.length;
 				if (document.selection){
-					var oSel = document.selection.createRange();
+					let oSel = document.selection.createRange();
 					oSel.moveStart ('character', -originalLength);
 					selStart = oSel.text.length;
 				}
@@ -775,7 +813,7 @@ var arc = new (function arcReactor(root){
 				try{
 					target.setSelectionRange(selStart-1, selStart-1);
 				}catch(e){	//	IE 8 support (fir IE testing)
-					var range = target.createTextRange();
+					let range = target.createTextRange();
 					range.collapse(true);
 					range.moveStart('character', selStart+1);
 					range.moveEnd('character', 0);
@@ -789,20 +827,20 @@ var arc = new (function arcReactor(root){
 		//
 		input.onkeypress = function(e){
 			e = e || event;
-			var target = e.target || e.srcElement
-			var ch = String.fromCharCode(e.charCode || e.keyCode);
+			let target = e.target || e.srcElement
+			let ch = String.fromCharCode(e.charCode || e.keyCode);
 			if ((e.keyCode > 36 && e.keyCode < 41) || e.keyCode == 9 || e.keyCode == 13)
 				return true;
 			else if (!isNumber(ch) || ch == '\t'){
 				e.cancelBubble = true;
 				return false;
 			}
-			var output = _self.input_mask.replace(/9/g, '_').replace(/A/g, '_');
-			var totLen = target.value.length;
+			let output = _self.input_mask.replace(/9/g, '_').replace(/A/g, '_');
+			let totLen = target.value.length;
 			//
-			var selStart;
+			let selStart;
 			if (document.selection){
-				var oSel = document.selection.createRange();
+				let oSel = document.selection.createRange();
 				oSel.moveStart ('character', -originalLength);
 				selStart = oSel.text.length;
 			}
@@ -821,7 +859,7 @@ var arc = new (function arcReactor(root){
 				target.setSelectionRange(selStart+1, selStart+1);
 			}
 			catch(e){	//	IE 8 support (for IE testing)
-				var range = target.createTextRange();
+				let range = target.createTextRange();
 				range.collapse(true);
 				range.moveStart('character', selStart+1);
 				range.moveEnd('character', 0);
@@ -840,7 +878,7 @@ var arc = new (function arcReactor(root){
 					this.setSelectionRange(0, 0);
 				}
 				catch(e){	//	IE 8 support (for IE testing)
-					var range = this.createTextRange();
+					let range = this.createTextRange();
 					range.collapse(true);
 					range.moveStart('character', 0);
 					range.moveEnd('character', 0);
@@ -857,8 +895,8 @@ var arc = new (function arcReactor(root){
 	var forms = root.querySelectorAll('form.autopilot');
 	this.autopilotForm = function(form){
 		//form.onsubmit = validate;
-		var type, mask;
-		for (var i = 0; i < form.elements.length; i++){
+		let type, mask;
+		for (let i = 0; i < form.elements.length; i++){
 			type = form.elements[i].getAttribute('data-validate');
 			mask = form.elements[i].getAttribute('data-mask');
 			if (type != null){
@@ -885,7 +923,7 @@ var arc = new (function arcReactor(root){
 				new arc.textareaHandler(form.elements[i]);
 		}
 	};
-	for (var j = 0; j < forms.length; j++)
+	for (let j = 0; j < forms.length; j++)
 		new autopilotForm(forms[j]);
 
 
@@ -898,8 +936,8 @@ var arc = new (function arcReactor(root){
 		//	Function to-be called on navigating into activity
 		return function(context, params, e, callback){
 			//	Load Script
-			var module = false, tLoaded = false;
-			var exec = function(code){
+			let module = false, tLoaded = false;
+			let exec = function(code){
 				if (typeof code != 'undefined')
 					module = code;
 				if (tLoaded){
@@ -952,7 +990,7 @@ var arc = new (function arcReactor(root){
 						/*nav.className = '';
 						setTimeout(function(){
 							nav.style.zIndex = 1;
-						}, 100);*/
+						}, 100);* /
 						context.innerHTML = data.responseText;
 						tLoaded = true;
 						exec();
@@ -982,7 +1020,7 @@ var arc = new (function arcReactor(root){
 		this.tabBodies = dom.querySelectorAll('.tabBodies .tab-body');
 		this.tabHeads[0].className += ' current';
 		this.tabBodies[0].className += ' current';
-		for (var i = 0; i < this.tabHeads.length; i++)
+		for (let i = 0; i < this.tabHeads.length; i++)
 			new tabHeadClick(this.tabHeads[i], i, this.tabBodies[i]);
 		//
 		function tabHeadClick(tabHead, index, tabBody){
@@ -1026,13 +1064,13 @@ var arc = new (function arcReactor(root){
 		}
 		//
 		this.tabBody.addEventListener('touchstart', function(e){
-			var touchobj = e.changedTouches[0];
+			let touchobj = e.changedTouches[0];
 			_self.startx = parseInt(touchobj.clientX);
 			_self.starty = parseInt(touchobj.clientY);
 		}, false);
 		//
 		this.tabBody.addEventListener('touchmove', function(e){
-			var touchobj = e.changedTouches[0];
+			let touchobj = e.changedTouches[0];
 			_self.delta = parseInt(touchobj.clientX) - _self.startx;
 			_self.deltay = parseInt(touchobj.clientY) - _self.starty;
 			if (Math.abs(_self.deltay / _self.delta) < 2){
@@ -1044,7 +1082,7 @@ var arc = new (function arcReactor(root){
 		}, false);
 		//
 		this.tabBody.addEventListener('touchend', function(e){
-			var currentTab = _self.currentTab;
+			let currentTab = _self.currentTab;
 			if (Math.abs(_self.deltay / _self.delta) < 2){
 				if (_self.delta > 30){
 					currentTab -= 1;
@@ -1180,7 +1218,7 @@ var arc = new (function arcReactor(root){
 		this.eleLeft = 0;
 
 		ele.addEventListener('touchstart', function(e){
-			var touchobj = e.changedTouches[0];
+			let touchobj = e.changedTouches[0];
 			_self.startx = parseInt(touchobj.clientX);
 			ele.className = ele.className.replace(' animate-left', '');
 			bg.className = bg.className.replace(' animate-background-position', '');
@@ -1188,7 +1226,7 @@ var arc = new (function arcReactor(root){
 		}, false);
 
 		ele.addEventListener('touchmove', function(e){
-			var touchobj = e.changedTouches[0];
+			let touchobj = e.changedTouches[0];
 			_self.delta = parseInt(touchobj.clientX) - _self.startx;
 			ele.style.left = (_self.eleLeft + _self.delta) + 'px';
 			bg.style.backgroundPositionX = ((_self.eleLeft + _self.delta - 500) / 20) + 'px';
@@ -1304,6 +1342,8 @@ var arc = new (function arcReactor(root){
 
 // ------------------------------------------------------------------------------------
 
+var arrayIgnore = ["min", "max", "sum", "avg"];
+
 Array.prototype.max = function() {
 	return Math.max.apply(null, this);
 };
@@ -1356,6 +1396,17 @@ HTMLElement.prototype.q = function(selector){
 	return this.querySelectorAll(selector);
 }
 
+HTMLElement.prototype.__defineGetter__("innerText", function () {
+	if (this.textContent) {
+		return this.textContent;
+	}
+	else {
+		var r = this.ownerDocument.createRange();
+		r.selectNodeContents(this);
+		return r.toString();
+	}
+});
+
 function q(selector){
 	return document.querySelectorAll(selector);
 }
@@ -1375,6 +1426,7 @@ String.prototype.hash = function() {
 // ---------------------------------------------------------------------
 
 var GET = 'GET', POST = 'POST';
+var module = {'exports': {}};
 
 var isNumeric = isNumber = function(n) {
 	return !isNaN(parseFloat(n)) && isFinite(n);
